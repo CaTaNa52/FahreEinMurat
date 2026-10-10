@@ -1,93 +1,82 @@
 # FAHRE EIN MURAT 🛴
 
-Browserbasiertes 3D-E-Scooter-Spiel mit Third-Person-Kamera, großer Waldwelt und Wheelie-Modus.
+Ein browserbasiertes 3D-E-Scooter-Freeride-Spiel mit Third-Person-Kamera, bewaldeter Welt, Fahrphysik und Wheelies. Auf PC und Smartphone nutzbar.
 
-## Stack (aktuell)
+## Architektur – wie ONEVERSE
 
-- **React 19** – UI und Bedienelemente
-- **Vite 7** – lokaler Entwicklungsserver und Build
-- **Three.js** – WebGL-Rendering und 3D-Welt
-- **Kein Backend, keine Datenbank, keine Anmeldung und keine Hosting-Integration** in dieser Phase
+- React 19 für Startbildschirm, Fahr-HUD und Touch-Bedienung
+- Vite 6 und das offizielle React-Plugin als Entwicklungsserver
+- **React Three Fiber 9** und Three.js für die 3D-Szene
+- React-Szene wird erst nach Klick auf **JETZT FAHREN** geladen
+- Fehlergrenze und WebGL-Check statt leerer Seite bei fehlgeschlagener Initialisierung
+- **Kein Backend, kein Supabase, keine Authentifizierung, kein Hosting** benötigt
 
-## Lokal spielen
+## Start in GitHub Codespaces
 
-Voraussetzung: Node.js 20.19+ oder 22.12+ und npm.
+1. Öffne das Repository auf **main**.
+2. In einem bestehenden Codespace zunächst `git pull origin main` ausführen.
+3. Über die Befehlspalette **Codespaces: Rebuild Container** auswählen, damit die aktuelle `.devcontainer/devcontainer.json` übernommen wird.
+4. Starte im Terminal **genau einen** Vite-Prozess:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Anschließend die im Terminal angegebene lokale URL öffnen (standardmäßig http://localhost:5173).
+5. Unter **Ports** Port **5173** mit **Open in Browser** öffnen. Die App funktioniert im externen Safari/Chrome zuverlässiger als in einer eingebetteten IDE-Vorschau.
 
-Produktionsbuild:
+Der Port ist mit `--strictPort` festgelegt. Ist 5173 belegt, wird ein Fehler angezeigt statt unbemerkt Port 5174 zu verwenden. Beende einen alten Vite-Prozess zuvor im entsprechenden Terminal mit **Strg+C**.
 
-```bash
-npm run build
-npm run preview
-```
+Bei einem grauen Bildschirm: Hard-Reload durchführen, Browser-Konsole prüfen und verifizieren, dass die URL tatsächlich zum aktuellen Port 5173 gehört. Im Codespace `git log -1 --oneline` zur Prüfung des verwendeten Quellstands.
 
 ## Steuerung
 
-| Funktion | Tastatur | Touch |
-| --- | --- | --- |
-| Beschleunigen | W / Pfeil hoch | GAS / ↑ |
-| Rückwärts | S / Pfeil runter | ↓ |
-| Lenken | A / D oder Pfeiltasten | ← / → |
+| Aktion | PC | Handy |
+|---|---|---|
+| Gas / vorwärts | W oder ↑ | GAS oder ↑ |
+| Rückwärts | S oder ↓ | ↓ |
+| Lenken | A / D oder ← / → | ← / → |
 | Bremsen | Shift | BREMSE |
-| Wheelie | Leertaste halten | WHEELIE ↑ einschalten / RAD RUNTER ↓ ausschalten |
-| Reset | R | ↺, bei großen Displays |
+| Wheelie | Leertaste halten | WHEELIE ↑ / RAD RUNTER ↓ |
+| Zurücksetzen | R | ↺ (Desktop) |
 
-## Inhalt
+Die Touch-Schaltflächen unterstützen gedrückt halten und gleichzeitig Lenken.
 
-- Detaillierter, geometrisch modellierter Scooter
-- Smooth Third-Person-Kamera
-- 2,2 × 2,2 km Waldkarte mit 1.750 instanzierten Bäumen
-- Straßen, Fahrphysik, Baumkollisionen und Wheelie
-- Responsive Touch-Bedienung
-- Begrenzte Pixeldichte und räumliches Raster für Baumkollisionen
+## Spielwelt
 
-## Projektstruktur
+- 1,2 × 1,2 km offene 3D-Welt mit kurviger Straße, Markierungen und Bäumen
+- Instanced Trees: 600 auf Mobilgeräten, 1300 auf Desktop
+- E-Scooter mit Lenker, Rädern, Beleuchtung und Fahrer
+- Third-Person-Folgekamera, Bremsen, Rückwärtsfahren, Baumberührung und Wheelie
+- Mobile Renderauflösung begrenzt, Schatten auf Mobilgeräten deaktiviert
+
+## Testen
+
+```bash
+npm run build
+npx playwright install chromium
+npm run test:e2e
+```
+
+GitHub Actions führt Build und Chromium-Smoke-Tests für Desktop und mobiles Viewport aus. Die Tests prüfen, ob der Startbildschirm angezeigt wird, eine Canvas-Szene erscheint und sich die Geschwindigkeit beim Gasgeben verändert. Das Bestehen der Tests und das Verhalten auf echten Geräten müssen anhand der jeweiligen Resultate bestätigt werden.
+
+## Projekt
 
 ```text
 index.html
 package.json
 vite.config.js
 src/
-  main.jsx      React Einstieg
-  App.jsx       Benutzeroberfläche / Touch-Controls
-  style.css     Styles
-  game.js       Three.js-Welt, Animation, Fahrlogik
+  main.jsx          React-Einstieg
+  App.jsx           Startbildschirm, HUD, mobile Steuerung
+  GameCanvas.jsx    React Three Fiber Canvas
+  World.jsx         3D-Welt, Scooter, Fahrer, Fahrsimulation
+  style.css         Responsive Layout
+tests/e2e/           Chromium-Browser-Smoketests
+.github/workflows/   Build- und Browser-Tests
+.devcontainer/       Codespaces-Konfiguration
 ```
 
-## Zukunft
+## Später
 
-Backend, Supabase und Vercel können später ergänzt werden. Derzeit sind **keine** Umgebungsvariablen oder Cloud-Dienste erforderlich.
-
-Der Stand ist ein Prototyp: auf realen Geräten noch auf FPS und Verhalten zu testen. Hochwertige externe PBR-Assets und Texturen sind als separater visueller Ausbauschritt vorgesehen.
-
-## Smartphone-Unterstützung und PWA-Roadmap
-
-Schon enthalten:
-- Mobile Browsersteuerung für Touchgeräte (links, rechts, vorwärts, rückwärts, Gas, Bremse und Wheelie)
-- CSS Safe Areas für iPhone Notch/Dynamic Island und Displayränder
-- Optimierungen für kleine Displays, Hoch-/Querformat und grobe Touch-Eingaben
-- Reduzierte Renderlast auf mobilen Geräten (DPR, Instancing und mobile Schatten-Konfiguration)
-- Mobile Browser-Metadaten als Vorbereitung für einen späteren App-Modus
-
-Noch **nicht** enthalten: Web-App-Manifest, fertige Icons in mehreren Größen, Service Worker, Installationsdialog oder Offline-Caching. Eine echte installierbare PWA folgt erst in einem späteren Schritt. Ein Backend, Vercel oder Supabase wird dafür aktuell nicht benötigt.
-
-Auf realen iOS-/Android-Geräten müssen FPS, Akkunutzung und Bediengefühl noch getestet werden.
-
-## GitHub Codespaces
-
-Das Repository besitzt eine `.devcontainer/devcontainer.json`. Für einen **bestehenden Codespace** nach dem Pull des aktuellen `main` die Befehlspalette öffnen und **Codespaces: Rebuild Container** (oder **Dev Containers: Rebuild Container**) wählen. Dabei werden Node.js 22 und npm bereitgestellt, die Abhängigkeiten installiert und der Vite-Server im Hintergrund gestartet. Der Port **5173** wird automatisch weitergeleitet.
-
-Wenn die automatische Vorschau nicht aufgeht: im Tab **Ports** den Port 5173 öffnen. Bei Problemen im Codespace-Terminal:
-
-```bash
-npm install
-npm run dev
-```
-
-Fehlermeldungen ggf. über `cat /tmp/fahre-ein-murat-vite.log` prüfen. Das CI-Workflow `.github/workflows/verify.yml` prüft künftig `npm run build` auf GitHub Actions.
+PWA-Manifest, App-Icons, Service Worker und Offline-Unterstützung; danach optional Vercel, Supabase und Multiplayer. Die aktuelle Version ist ein Prototyp ohne fertige realistische PBR-Texturen.
