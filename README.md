@@ -78,3 +78,16 @@ Schon enthalten:
 Noch **nicht** enthalten: Web-App-Manifest, fertige Icons in mehreren Größen, Service Worker, Installationsdialog oder Offline-Caching. Eine echte installierbare PWA folgt erst in einem späteren Schritt. Ein Backend, Vercel oder Supabase wird dafür aktuell nicht benötigt.
 
 Auf realen iOS-/Android-Geräten müssen FPS, Akkunutzung und Bediengefühl noch getestet werden.
+
+## GitHub Codespaces
+
+Das Repository besitzt eine `.devcontainer/devcontainer.json`. Für einen **bestehenden Codespace** nach dem Pull des aktuellen `main` die Befehlspalette öffnen und **Codespaces: Rebuild Container** (oder **Dev Containers: Rebuild Container**) wählen. Dabei werden Node.js 22 und npm bereitgestellt, die Abhängigkeiten installiert und der Vite-Server im Hintergrund gestartet. Der Port **5173** wird automatisch weitergeleitet.
+
+Wenn die automatische Vorschau nicht aufgeht: im Tab **Ports** den Port 5173 öffnen. Bei Problemen im Codespace-Terminal:
+
+```bash
+npm install
+npm run dev
+```
+
+Fehlermeldungen ggf. über `cat /tmp/fahre-ein-murat-vite.log` prüfen. Das CI-Workflow `.github/workflows/verify.yml` prüft künftig `npm run build` auf GitHub Actions.
