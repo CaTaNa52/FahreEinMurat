@@ -1,22 +1,19 @@
 {
-  "name": "FahreEinMurat React Game",
+  "name": "FahreEinMurat React Three Fiber",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
   "forwardPorts": [
     5173
   ],
   "portsAttributes": {
     "5173": {
-      "label": "FahreEinMurat – Spiel",
-      "onAutoForward": "openBrowser"
+      "label": "FahreEinMurat",
+      "onAutoForward": "notify"
     }
   },
   "postCreateCommand": "npm install",
-  "postStartCommand": "nohup sh -c 'npm run dev -- --host 0.0.0.0 > /tmp/fahre-ein-murat-vite.log 2>&1' >/dev/null 2>&1 &",
   "customizations": {
     "vscode": {
-      "extensions": [
-        "dbaeumer.vscode-eslint"
-      ]
+      "extensions": []
     }
   }
 }
