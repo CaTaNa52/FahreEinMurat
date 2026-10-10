@@ -17,3 +17,9 @@ body{position:fixed;inset:0;-webkit-touch-callout:none;-webkit-user-select:none}
 @media(pointer:coarse){.tip,.hint,.label{display:none}.ctrl{box-shadow:0 5px 24px #0009}.controls{bottom:calc(12px + env(safe-area-inset-bottom))}}
 @media(max-height:470px) and (orientation:landscape){.controls{bottom:calc(7px + env(safe-area-inset-bottom))}.pad{grid-template-columns:repeat(3,44px);grid-template-rows:repeat(2,44px)}.ctrl{width:44px;height:44px}.ctrl.primary{width:64px;height:60px}.ctrl.secondary,.ctrl.wheel{width:60px;height:45px}.speed strong{font-size:32px}.pill,.tip,.hint,.label{display:none}.intro h1{font-size:40px;margin:7px}.intro p{margin:8px}.start{margin-top:4px;padding:11px 26px}.overlay{overflow-y:auto}}
 @media(max-width:350px){.ctrl.wheel{width:48px}.controls{gap:3px}.pad{gap:2px}}
+
+.startup-error{position:fixed;z-index:100;inset:0;background:#111d17;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:15px;padding:clamp(20px,5vw,50px);overflow-y:auto;font-family:system-ui,sans-serif}
+.startup-error h2{font-size:clamp(22px,5vw,34px);margin:0}
+.startup-error p{max-width:550px;line-height:1.6;margin:0}
+.startup-error code{display:block;max-width:min(100%,650px);overflow-wrap:anywhere;background:#26352c;color:#d7ff9c;border-radius:12px;padding:14px}
+.startup-error button{border:0;background:#c8ff57;color:#102015;padding:14px 24px;border-radius:13px;font-weight:800}
