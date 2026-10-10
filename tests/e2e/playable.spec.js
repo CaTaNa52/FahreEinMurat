@@ -16,9 +16,9 @@ test('Start screen opens a rendered, playable 3D scene', async ({ page, isMobile
    await page.waitForTimeout(1100);
    await page.mouse.up();
  } else {
-   await page.keyboard.down('KeyW');
+   await page.keyboard.down('w');
    await page.waitForTimeout(1100);
-   await page.keyboard.up('KeyW');
+   await page.keyboard.up('w');
  }
  await expect.poll(async () => Number(await page.getByTestId('speed').textContent())).toBeGreaterThan(0);
  expect(exceptions).toEqual([]);
