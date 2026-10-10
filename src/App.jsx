@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { startGame } from './game';
 
 function Control({ action, children, className = '' }) {
@@ -7,9 +7,26 @@ function Control({ action, children, className = '' }) {
 
 export default function App() {
   const mount = useRef(null);
-  useEffect(() => { const game = startGame(mount.current); return () => game.destroy(); }, []);
+  const [error, setError] = useState(null);
+  useEffect(() => {
+    let game;
+    try {
+      game = startGame(mount.current);
+    } catch (failure) {
+      console.error('FahreEinMurat konnte die 3D-Welt nicht starten:', failure);
+      setError(failure instanceof Error ? failure.message : String(failure));
+    }
+    return () => game?.destroy?.();
+  }, []);
   return <>
     <div ref={mount} className="scene-host" aria-label="Dreidimensionale Scooter-Spielwelt" />
+    {error && <div role="alert" className="startup-error">
+      <h2>3D-Spiel konnte nicht gestartet werden</h2>
+      <p>Dein Browser oder die Codespaces-Vorschau konnte WebGL nicht initialisieren.</p>
+      <code>{error}</code>
+      <p>Öffne Port 5173 über „Ports → Open in Browser“ in Safari, Chrome oder Edge statt im eingebetteten Vorschaufenster. Aktiviere bei Bedarf die Hardwarebeschleunigung.</p>
+      <button type="button" onClick={() => location.reload()}>Erneut versuchen</button>
+    </div>}
     <div id="hud">
       <div id="top"><div className="brand">FAHRE EIN <em>MURAT.</em></div><div className="pill">🌲 FOREST FREERIDE</div></div>
       <div className="speed"><strong id="speed">0</strong> <span>KM/H</span><small id="status">BEREIT ZUM FAHREN</small></div>
