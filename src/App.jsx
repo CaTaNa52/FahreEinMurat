@@ -1,88 +1,64 @@
 import { Component, Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-
-const World = lazy(() => import('./World.jsx'));
-
-class GameErrorBoundary extends Component {
-  constructor(props) { super(props); this.state = { error: null }; }
-  static getDerivedStateFromError(error) { return { error }; }
-  componentDidCatch(error, info) { console.error('3D scene error:', error, info); }
-  render() {
-    if (this.state.error) return <div className="error-screen" role="alert"><h2>3D-Ansicht konnte nicht starten</h2><p>{this.state.error.message}</p><p>Bitte öffne Port 5173 über „Open in Browser“ und aktualisiere die Seite.</p><button onClick={() => location.reload()}>Erneut versuchen</button></div>;
-    return this.props.children;
-  }
+const GameCanvas = lazy(() => import('./GameCanvas.jsx'));
+class SceneError extends Component {
+  constructor(props){super(props);this.state={error:null};}
+  static getDerivedStateFromError(error){return {error};}
+  componentDidCatch(error,info){console.error('FahreEinMurat 3D:',error,info);}
+  render(){return this.state.error?<div className="startup-error" role="alert"><h2>3D konnte nicht gestartet werden</h2><p>{this.state.error.message}</p><p>Öffne die Codespaces-Portvorschau direkt in Safari oder Chrome.</p><button onClick={()=>location.reload()}>Erneut versuchen</button></div>:this.props.children;}
 }
-
-function HoldButton({ action, label, children, input, className = '' }) {
-  const [pressed, setPressed] = useState(false);
-  const release = useCallback(() => { input.current[action] = false; setPressed(false); }, [action, input]);
-  useEffect(() => () => { input.current[action] = false; }, [action, input]);
-  return <button type="button" className={'control ' + className + (pressed ? ' pressed' : '')} aria-label={label}
-    onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); input.current[action] = true; setPressed(true); }}
-    onPointerUp={release} onPointerCancel={release} onLostPointerCapture={release} onContextMenu={e => e.preventDefault()}>{children}</button>;
+function Control({action, label, children, controls, className=''}) {
+  const [held,setHeld]=useState(false);
+  const stop=()=>{controls.current[action]=false;setHeld(false);};
+  useEffect(()=>()=>{controls.current[action]=false;},[action,controls]);
+  return <button type="button" aria-label={label} className={`ctrl ${className} ${held?'held':''}`}
+    onPointerDown={e=>{e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);controls.current[action]=true;setHeld(true);}}
+    onPointerUp={stop} onPointerCancel={stop} onLostPointerCapture={stop}
+    onContextMenu={e=>e.preventDefault()}>{children}</button>;
 }
-
-function canUseWebGL() {
-  try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; }
-}
-
-export default function App() {
-  const [started, setStarted] = useState(false);
-  const [webgl, setWebGL] = useState(true);
-  const [speed, setSpeed] = useState(0);
-  const [wheelie, setWheelie] = useState(false);
-  const [quality, setQuality] = useState('high');
-  const input = useRef({ forward:false, back:false, left:false, right:false, brake:false, wheelie:false, reset:false });
-  const displayedSpeed = useRef(0);
-  const begin = () => {
-    setWebGL(canUseWebGL());
-    setQuality((matchMedia('(pointer:coarse)').matches || innerWidth < 850) ? 'low' : 'high');
+function supportsWebGL(){try{const canvas=document.createElement('canvas');return !!(canvas.getContext('webgl2')||canvas.getContext('webgl'));}catch{return false;}}
+export default function App(){
+  const controls=useRef({forward:false,back:false,left:false,right:false,brake:false,wheelie:false,reset:false});
+  const [started,setStarted]=useState(false);
+  const [unsupported,setUnsupported]=useState(false);
+  const [wheelie,setWheelie]=useState(false);
+  const [quality,setQuality]=useState('high');
+  const [kmh,setKmh]=useState(0);
+  const speedRef=useRef(0);
+  const onSpeed=useCallback(speed=>{const value=Math.round(Math.abs(speed)*3.6);if(value!==speedRef.current){speedRef.current=value;setKmh(value);}},[]);
+  const begin=()=>{
+    if(!supportsWebGL()){setUnsupported(true);return;}
+    setQuality((matchMedia('(pointer:coarse)').matches||innerWidth<850)?'low':'high');
     setStarted(true);
   };
-  useEffect(() => {
-    const keys = { KeyW:'forward', ArrowUp:'forward', KeyS:'back', ArrowDown:'back', KeyA:'left', ArrowLeft:'left', KeyD:'right', ArrowRight:'right', ShiftLeft:'brake', ShiftRight:'brake', Space:'wheelie' };
-    const down = e => { if (keys[e.code]) { input.current[keys[e.code]] = true; e.preventDefault(); } if (e.code === 'KeyR') input.current.reset = true; };
-    const up = e => { if (keys[e.code]) { input.current[keys[e.code]] = false; e.preventDefault(); } };
-    const blur = () => { for (const key of Object.keys(input.current)) input.current[key] = false; setWheelie(false); };
-    window.addEventListener('keydown', down); window.addEventListener('keyup', up); window.addEventListener('blur', blur);
-    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', blur); };
-  }, []);
-  const reportSpeed = useCallback(value => {
-    const rounded = Math.round(Math.abs(value) * 3.6);
-    if (displayedSpeed.current !== rounded) { displayedSpeed.current = rounded; setSpeed(rounded); }
-  }, []);
-  return <main className="app">
-    {started && webgl && <GameErrorBoundary><Suspense fallback={<div className="loading">3D-Welt wird geladen …</div>}>
-      <Canvas className="game-canvas" dpr={quality === 'low' ? [1,1.2] : [1,1.75]}
-        shadows={quality === 'high'} camera={{fov:65,near:0.1,far:650,position:[0,3.4,8.3]}}
-        gl={{antialias:quality==='high',powerPreference:'high-performance'}}
-        fallback={<div className="error-screen"><h2>WebGL ist nicht verfügbar</h2><p>Bitte in Safari, Chrome oder Edge öffnen.</p></div>}>
-        <World input={input} wheelieEnabled={wheelie} quality={quality} onSpeed={reportSpeed}/>
-      </Canvas>
-    </Suspense></GameErrorBoundary>}
-    {started && !webgl && <div className="error-screen" role="alert"><h2>Hier ist WebGL nicht verfügbar</h2><p>Öffne in Codespaces den Port 5173 mit „Open in Browser“ statt in der integrierten Vorschau. Auf dem Handy: Safari oder Chrome.</p><button onClick={() => location.reload()}>Erneut versuchen</button></div>}
-    {started && webgl && <div className="hud">
-      <div className="hud-top"><div className="logo">FAHRE EIN <b>MURAT<span>.</span></b><small>FOREST FREERIDE · ALPHA 0.3</small></div><div className="dashboard"><strong>{speed}</strong><div>KM/H <span>● FREERIDE</span></div></div></div>
-      <div className="bottom-controls">
-        <div className="direction"><div className="direction-row"><HoldButton input={input} action="forward" label="Vorwärts">↑</HoldButton></div>
-          <div className="direction-row"><HoldButton input={input} action="left" label="Links">←</HoldButton><HoldButton input={input} action="back" label="Rückwärts">↓</HoldButton><HoldButton input={input} action="right" label="Rechts">→</HoldButton></div>
-        </div>
-        <div className="action-controls">
-          <button type="button" aria-pressed={wheelie} className={'control wheelie' + (wheelie ? ' active' : '')} onClick={() => setWheelie(v => !v)}>{wheelie ? 'RAD RUNTER ↓' : 'WHEELIE ↑'}</button>
-          <HoldButton input={input} action="brake" className="brake" label="Bremsen">BREMSE</HoldButton>
-          <HoldButton input={input} action="forward" className="gas" label="Gas geben">GAS ⚡</HoldButton>
-        </div>
-      </div>
-      <div className="keyboard-tip">WASD / Pfeiltasten · Shift bremsen · Leertaste Wheelie · R zurücksetzen</div>
+  useEffect(()=>{
+    const map={KeyW:'forward',ArrowUp:'forward',KeyS:'back',ArrowDown:'back',KeyA:'left',ArrowLeft:'left',KeyD:'right',ArrowRight:'right',ShiftLeft:'brake',ShiftRight:'brake',Space:'wheelie'};
+    const down=e=>{const a=map[e.code];if(a){controls.current[a]=true;e.preventDefault();}if(e.code==='KeyR')controls.current.reset=true;if(e.code==='Enter'&&!started)begin();};
+    const up=e=>{const a=map[e.code];if(a){controls.current[a]=false;e.preventDefault();}};
+    const blur=()=>{for(const key in controls.current)controls.current[key]=false;};
+    addEventListener('keydown',down);addEventListener('keyup',up);addEventListener('blur',blur);
+    return()=>{removeEventListener('keydown',down);removeEventListener('keyup',up);removeEventListener('blur',blur);};
+  },[started]);
+  return <>
+    {started&&<div className="scene-host"><SceneError><Suspense fallback={<div className="loading">3D-WELT WIRD GELADEN …</div>}><GameCanvas controls={controls} wheelie={wheelie} quality={quality} onSpeed={onSpeed}/></Suspense></SceneError></div>}
+    {started&&<div id="hud">
+      <div id="top"><div className="brand">FAHRE EIN <em>MURAT.</em></div><div className="pill">🌲 FOREST FREERIDE</div></div>
+      <div className="speed"><strong data-testid="speed">{kmh}</strong> <span>KM/H</span><small>{wheelie?'⚡ WHEELIE MODE':'● FREERIDE'}</small></div>
+      <div className="tip">W / ↑ Gas · A/D Lenken · Shift Bremse · Leertaste Wheelie · R Reset</div>
+      <div className="controls left"><div className="pad"><span></span><Control controls={controls} action="forward" label="Vorwärts">↑</Control><span></span>
+      <Control controls={controls} action="left" label="Links">←</Control><Control controls={controls} action="back" label="Rückwärts">↓</Control><Control controls={controls} action="right" label="Rechts">→</Control></div></div>
+      <div className="controls right"><button className="ctrl reset" aria-label="Zurücksetzen" onClick={()=>{controls.current.reset=true;setWheelie(false);}}>↺</button><div className="stack">
+      <button className={`ctrl wheel ${wheelie?'active':''}`} aria-label={wheelie?'Vorderrad absenken':'Wheelie'} aria-pressed={wheelie} onClick={()=>setWheelie(v=>!v)}>{wheelie?'RAD RUNTER ↓':'WHEELIE ↑'}</button>
+      <Control controls={controls} action="brake" label="Bremse" className="secondary">BREMSE</Control></div>
+      <Control controls={controls} action="forward" label="Gas" className="primary">GAS ⚡</Control></div>
+      <div className="hint">WASD / PFEILTASTEN · SHIFT BREMSEN · LEERTASTE WHEELIE · R RESET</div>
     </div>}
-    {!started && <div className="welcome">
-      <div className="welcome-header"><span className="welcome-brand">FE<span>M</span>.</span><span className="version">3D SCOOTER OPEN WORLD</span></div>
-      <div className="welcome-copy"><span className="eyebrow">DEIN SCOOTER. DEINE WELT.</span><h1>FAHRE EIN<br/><em>MURAT.</em></h1>
-        <p>Raus auf die Straße. Quer durch den Wald. Gas geben, Kurven fahren und Wheelies ziehen – direkt im Browser, auch auf dem Handy.</p>
-        <button className="play-button" onClick={begin}>JETZT FAHREN <span>↗</span></button>
-        <div className="welcome-meta">100% Browser-Spiel · React Three Fiber · Ohne Anmeldung</div>
-      </div>
-      <div className="welcome-horizon"><div className="sun"/><div className="hills far"/><div className="hills near"/><div className="road-illustration"/></div>
-    </div>}
-  </main>;
+    {!started&&!unsupported&&<div className="overlay"><div className="intro"><div className="eyebrow">OPEN WORLD SCOOTER GAME</div>
+      <h1>FAHRE<br/>EIN <i>MURAT.</i></h1>
+      <p>Dein Scooter. Deine Straße. Dein Wald. Erkunde die große 3D-Welt, gib Gas und zieh einen Wheelie.</p>
+      <button className="start" onClick={begin}>JETZT FAHREN →</button>
+      <p style={{fontSize:12,opacity:.7}}>PC: WASD / Pfeiltasten · Handy: Touch-Buttons</p>
+      <p style={{fontSize:11,opacity:.5}}>REACT THREE FIBER · VERSION 0.3</p>
+    </div></div>}
+    {unsupported&&<div className="startup-error" role="alert"><h2>WebGL ist in dieser Vorschau nicht verfügbar.</h2><p>Öffne im Codespace den Port 5173 mit „Open in Browser“ direkt in Safari, Chrome oder Edge.</p><button onClick={()=>location.reload()}>Erneut versuchen</button></div>}
+  </>;
 }
