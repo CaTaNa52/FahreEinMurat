@@ -42,7 +42,7 @@ const wheelieTarget=controls.wheelie&&player.speed>2?.55:0;player.wheelie=THREE.
 scooterRoot.position.set(player.x,.015+Math.sin(elapsed*15)*Math.min(Math.abs(player.speed)*.0004,.009),player.z);scooterRoot.rotation.y=player.yaw;scooterRoot.rotation.z=player.bank;wheeliePivot.rotation.x=player.wheelie;const spin=player.speed*dt/.29;frontWheel.rotation.x-=spin;rearWheel.rotation.x-=spin;
 const f=new THREE.Vector3(Math.sin(player.yaw),0,Math.cos(player.yaw));cameraTarget.set(player.x,1.4,player.z);idealCam.copy(cameraTarget).addScaledVector(f,-5.6-Math.min(Math.abs(player.speed)*.08,1.6));idealCam.y+=2.65+player.wheelie*.4;camera.position.lerp(idealCam,1-Math.exp(-4.5*dt));camera.lookAt(cameraTarget.x,cameraTarget.y+.15,cameraTarget.z);sun.position.set(player.x-120,180,player.z-90);sun.target.position.set(player.x,0,player.z);sun.target.updateMatrixWorld();renderer.render(scene,camera)}
 camera.position.set(0,3.9,9);animationId=requestAnimationFrame(animate);
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.7))});
-
-return { begin, reset };
+const onResize=()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(pixelRatio());};
+addEventListener('resize',onResize);
+return { begin, reset, destroy(){ active=false; cancelAnimationFrame(animationId); removeEventListener('resize',onResize); renderer.dispose(); renderer.domElement.remove(); } };
 }
