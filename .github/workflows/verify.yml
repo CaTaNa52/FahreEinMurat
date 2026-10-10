@@ -1,11 +1,11 @@
-name: Verify React Game
+name: Verify React 3D Game
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
 jobs:
-  build:
+  build-and-play:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -14,3 +14,5 @@ jobs:
           node-version: '22'
       - run: npm install
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
