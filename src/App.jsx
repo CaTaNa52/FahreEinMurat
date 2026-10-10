@@ -7,7 +7,7 @@ function Control({ action, children, className = '' }) {
 
 export default function App() {
   const mount = useRef(null);
-  useEffect(() => { startGame(mount.current); }, []);
+  useEffect(() => { const game = startGame(mount.current); return () => game.destroy(); }, []);
   return <>
     <div ref={mount} className="scene-host" aria-label="Dreidimensionale Scooter-Spielwelt" />
     <div id="hud">
