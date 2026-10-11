@@ -31,3 +31,25 @@ test('legacy wallet remains intact on first profile migration',()=>{
   const old={getItem:key=>key==='fahre-ein-murat-wallet-v1'?JSON.stringify({coins:4200,completed:['slalom']}):null};
   assert.equal(loadProfile(old).coins,4200);
 });
+
+test('missing, null or damaged rider profile never loses default helmet/pants',()=>{
+  const storage={getItem:key=>key===PROFILE_KEY?JSON.stringify({coins:321,rider:null,garage:null,owned:null}):null};
+  const loaded=loadProfile(storage);
+  assert.equal(loaded.coins,321);
+  assert.equal(loaded.rider.helmet,true);
+  assert.equal(loaded.rider.pants,'#1f2832');
+  assert.equal(loaded.garage.model,'city');
+  assert.deepEqual(loaded.owned,[]);
+  const patched=chooseUpgrade(loaded,'rider','helmet',false);
+  assert.equal(patched.profile.rider.helmet,false);
+  assert.equal(patched.profile.garage.model,'city');
+});
+
+test('upgrades can be applied to a legacy profile with missing fields',()=>{
+  const broken={coins:800,garage:null,rider:undefined,owned:undefined};
+  const result=chooseUpgrade(broken,'rider','watch',true);
+  assert.equal(result.error,undefined);
+  assert.equal(result.profile.rider.watch,true);
+  assert.equal(result.profile.rider.helmet,true);
+  assert.equal(result.profile.coins,500);
+});

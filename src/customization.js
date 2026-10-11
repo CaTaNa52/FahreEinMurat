@@ -29,34 +29,37 @@ export const upgradeCost=(category,key,value)=>UPGRADE_COSTS[upgradeId(category,
 export function initialProfile(){
   return {coins:0,garage:{...DEFAULT_GARAGE},rider:{...DEFAULT_RIDER},owned:[]};
 }
+const asObject=value=>value&&typeof value==='object'&&!Array.isArray(value)?value:{};
+// Old saves, partially written localStorage data, and null sections must never crash the 3D studios.
+export function normalizeProfile(value) {
+  const raw=asObject(value);
+  return {
+    coins:Number.isFinite(raw.coins)?Math.max(0,raw.coins):0,
+    garage:{...DEFAULT_GARAGE,...asObject(raw.garage)},
+    rider:{...DEFAULT_RIDER,...asObject(raw.rider)},
+    owned:Array.isArray(raw.owned)?raw.owned.filter(id=>typeof id==='string'):[]
+  };
+}
 export function loadProfile(storage){
-  const defaults=initialProfile();
   try{
     const raw=JSON.parse(storage.getItem(PROFILE_KEY)||'null');
-    if(raw&&typeof raw==='object'){
-      return {
-        coins:Number.isFinite(raw.coins)?Math.max(0,raw.coins):0,
-        garage:{...defaults.garage,...raw.garage},
-        rider:{...defaults.rider,...raw.rider},
-        owned:Array.isArray(raw.owned)?raw.owned.filter(x=>typeof x==='string'):[]
-      };
-    }
-    // Preserve already earned coins when upgrading from the previous version.
+    if(raw&&typeof raw==='object')return normalizeProfile(raw);
+    // Preserve coins from the previous wallet version on upgrade.
     const old=JSON.parse(storage.getItem('fahre-ein-murat-wallet-v1')||'null');
-    if(old&&Number.isFinite(old.coins))defaults.coins=Math.max(0,old.coins);
-  }catch{/* blocked storage/private browsing */}
-  return defaults;
+    return normalizeProfile({coins:old?.coins});
+  }catch{return initialProfile();}
 }
 export function chooseUpgrade(profile,category,key,value){
+  const safe=normalizeProfile(profile);
   if(!['garage','rider'].includes(category)||!(key in (category==='garage'?DEFAULT_GARAGE:DEFAULT_RIDER))){
-    return {profile,error:'Unbekannte Option.'};
+    return {profile:safe,error:'Unbekannte Option.'};
   }
   const id=upgradeId(category,key,value),cost=upgradeCost(category,key,value);
-  const already=profile.owned.includes(id);
-  if(cost&&!already&&profile.coins<cost)return {profile,error:'Nicht genug Murat-Coins.'};
+  const already=safe.owned.includes(id);
+  if(cost&&!already&&safe.coins<cost)return {profile:safe,error:'Nicht genug Murat-Coins.'};
   return {profile:{
-    ...profile,coins:profile.coins-(already?0:cost),
-    owned:cost&&!already?[...profile.owned,id]:profile.owned,
-    [category]:{...profile[category],[key]:value}
+    ...safe,coins:safe.coins-(already?0:cost),
+    owned:cost&&!already?[...safe.owned,id]:safe.owned,
+    [category]:{...safe[category],[key]:value}
   },paid:already?0:cost};
 }

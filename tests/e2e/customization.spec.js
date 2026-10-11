@@ -4,6 +4,8 @@ async function launch(page){
   await page.goto('/');
   await page.getByRole('button',{name:/JETZT FAHREN/}).click();
   await expect(page.locator('.scene-host canvas')).toBeVisible({timeout:25000});
+  const intro=page.getByRole('button',{name:'Einführung überspringen'});
+  if(await intro.isVisible())await intro.click();
 }
 
 test('first/third person camera toggle works via HUD and V key',async({page})=>{
@@ -36,6 +38,8 @@ test('garage and home show rotating 3D models with saved custom colors',async({p
   await home.getByRole('button',{name:'Schließen'}).click();
   await page.reload();
   await page.getByRole('button',{name:/JETZT FAHREN/}).click();
+  const intro=page.getByRole('button',{name:'Einführung überspringen'});
+  if(await intro.isVisible())await intro.click();
   await page.getByRole('button',{name:'Garage öffnen'}).click();
   await expect(page.getByRole('button',{name:'Scooter-Farbe #ff733d'})).toHaveAttribute('aria-pressed','true');
   expect(errors).toEqual([]);

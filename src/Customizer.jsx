@@ -1,7 +1,7 @@
 import { Canvas } from '@react-three/fiber';
 import { useRef, useState } from 'react';
 import { Scooter, Rider } from './Models.jsx';
-import { PALETTE, MODEL_OPTIONS, TIRES_OPTIONS, upgradeCost, upgradeId } from './customization.js';
+import { PALETTE, MODEL_OPTIONS, TIRES_OPTIONS, upgradeCost, upgradeId, normalizeProfile } from './customization.js';
 
 function Studio({room,profile,angle}) {
   return <Canvas frameloop="demand" dpr={[1,1.25]}
@@ -42,7 +42,7 @@ function OptionSet({label,items,value,room,field,profile,onChange}){
         return <button key={String(item.value)} type="button"
           className={'choice'+(item.value===value?' selected':'')}
           disabled={!affordable}
-          onClick={()=>onChange(category,field,item.value)}>
+          onClick={()=>onChange(room,field,item.value)}>
           {item.label}{cost&&!owned?' · '+cost.toLocaleString('de-DE')+' 🪙':''}
           {cost&&owned?' · ✓':''}
         </button>;
@@ -55,7 +55,8 @@ export default function Customizer({room,profile,onChange,onClose,message}){
   const dragging=useRef(null);
   const garage=room==='garage';
   const category=garage?'garage':'rider';
-  const values=profile[category];
+  const safeProfile=normalizeProfile(profile);
+  const values=safeProfile[category];
   return <div className="customizer-layer" role="dialog" aria-modal="true"
     aria-label={garage?'Murat Garage':'Zuhause'}>
     <section className="customizer-window">
@@ -76,7 +77,7 @@ export default function Customizer({room,profile,onChange,onClose,message}){
             }}
             onPointerUp={()=>{dragging.current=null;}}
             onPointerCancel={()=>{dragging.current=null;}}>
-            <Studio room={room} profile={profile} angle={angle}/>
+            <Studio room={room} profile={safeProfile} angle={angle}/>
           </div>
           <div className="studio-turn">
             <button type="button" onClick={()=>setAngle(v=>v-.42)} aria-label="Modell links drehen">↶</button>
@@ -85,9 +86,9 @@ export default function Customizer({room,profile,onChange,onClose,message}){
           </div>
         </div>
         <div className="studio-options">
-          <div className="studio-wallet">🪙 {profile.coins.toLocaleString('de-DE')} MURAT-COINS</div>
+          <div className="studio-wallet">🪙 {safeProfile.coins.toLocaleString('de-DE')} MURAT-COINS</div>
           {garage?<>
-            <OptionSet room={category} profile={profile} field="model" label="Scooter-Modell"
+            <OptionSet room={category} profile={safeProfile} field="model" label="Scooter-Modell"
               items={MODEL_OPTIONS} value={values.model} onChange={onChange}/>
             <ColorPicker label="Scooter-Farbe" value={values.body}
               onChoose={v=>onChange(category,'body',v)}/>
@@ -95,16 +96,16 @@ export default function Customizer({room,profile,onChange,onClose,message}){
               onChoose={v=>onChange(category,'trim',v)}/>
             <ColorPicker label="Frontlicht" value={values.light}
               onChoose={v=>onChange(category,'light',v)}/>
-            <OptionSet room={category} profile={profile} field="tires" label="Reifen"
+            <OptionSet room={category} profile={safeProfile} field="tires" label="Reifen"
               items={TIRES_OPTIONS} value={values.tires} onChange={onChange}/>
-            <OptionSet room={category} profile={profile} field="underglow" label="Unterbodenbeleuchtung"
+            <OptionSet room={category} profile={safeProfile} field="underglow" label="Unterbodenbeleuchtung"
               items={[{value:false,label:'Aus'},{value:true,label:'Neon an'}]}
               value={values.underglow} onChange={onChange}/>
-            <OptionSet room={category} profile={profile} field="box" label="Gepäckbox"
+            <OptionSet room={category} profile={safeProfile} field="box" label="Gepäckbox"
               items={[{value:false,label:'Ohne'},{value:true,label:'Mit Box'}]}
               value={values.box} onChange={onChange}/>
           </>:<>
-            <OptionSet room={category} profile={profile} field="helmet" label="Helm"
+            <OptionSet room={category} profile={safeProfile} field="helmet" label="Helm"
               items={[{value:false,label:'Abnehmen'},{value:true,label:'Anziehen'}]}
               value={values.helmet} onChange={onChange}/>
             <ColorPicker label="Helmfarbe" value={values.helmetColor}
@@ -113,7 +114,7 @@ export default function Customizer({room,profile,onChange,onClose,message}){
               onChoose={v=>onChange(category,'jacket',v)}/>
             <ColorPicker label="Hose" value={values.pants}
               onChoose={v=>onChange(category,'pants',v)}/>
-            <OptionSet room={category} profile={profile} field="watch" label="Armbanduhr"
+            <OptionSet room={category} profile={safeProfile} field="watch" label="Armbanduhr"
               items={[{value:false,label:'Abnehmen'},{value:true,label:'Anziehen'}]}
               value={values.watch} onChange={onChange}/>
             <ColorPicker label="Uhrenfarbe" value={values.watchColor}

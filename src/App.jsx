@@ -2,6 +2,8 @@ import { Component, Suspense, lazy, useCallback, useEffect, useRef, useState } f
 import { CHALLENGES } from './gameplay.js';
 import { createInputRouter, gestureActions } from './input.js';
 import { loadProfile, PROFILE_KEY, chooseUpgrade } from './customization.js';
+import { TUTORIAL_STEPS, hasSeenTutorial, markTutorialSeen } from './tutorial.js';
+import Tutorial from './Tutorial.jsx';
 const GameCanvas = lazy(() => import('./GameCanvas.jsx'));
 const Customizer = lazy(() => import('./Customizer.jsx'));
 class SceneError extends Component {
@@ -121,6 +123,7 @@ export default function App(){
   const [studio,setStudio]=useState(null);
   const [studioMessage,setStudioMessage]=useState('');
   const [nearby,setNearby]=useState(null);
+  const [tutorialStep,setTutorialStep]=useState(null);
   const [quality,setQuality]=useState('high');
   const [kmh,setKmh]=useState(0);
   const speedRef=useRef(0);
@@ -155,22 +158,40 @@ export default function App(){
     setProfile(outcome.profile);
     setStudioMessage(outcome.paid?'🪙 '+outcome.paid+' Murat-Coins ausgegeben.':'✓ Anpassung gespeichert.');
   };
+  const finishTutorial=()=>{
+    markTutorialSeen(window.localStorage);
+    router.clearAll();
+    setTutorialStep(null);
+  };
+  const nextTutorial=()=>{
+    if(tutorialStep === null)return;
+    if(tutorialStep >= TUTORIAL_STEPS.length-1)finishTutorial();
+    else setTutorialStep(step=>step+1);
+  };
   const begin=()=>{
     if(!supportsWebGL()){setUnsupported(true);return;}
     setQuality((matchMedia('(pointer:coarse)').matches||innerWidth<850)?'low':'high');
     setStarted(true);
+    if(!hasSeenTutorial(window.localStorage))setTutorialStep(0);
   };
   useEffect(()=>{
     const map={KeyW:'forward',ArrowUp:'forward',KeyS:'back',ArrowDown:'back',KeyA:'left',ArrowLeft:'left',KeyD:'right',ArrowRight:'right',ShiftLeft:'brake',ShiftRight:'brake',Space:'wheelie'};
-    const down=e=>{if(studio){if(e.code==='Escape')closeStudio();return;}const a=map[e.code];if(a){router.setKey(e.code,a,true);e.preventDefault();}if(e.code==='KeyR')controls.current.reset=true;if(e.code==='KeyV'&&!e.repeat)setView(v=>v==='third'?'first':'third');if(e.code==='KeyE'&&nearby)openStudio(nearby);if(e.code==='Enter'&&!started)begin();};
+    const down=e=>{
+      if(tutorialStep!==null){
+        if(e.code==='Escape')finishTutorial();
+        else if(e.code==='Enter'&&!e.repeat)nextTutorial();
+        e.preventDefault();return;
+      }
+      if(studio){if(e.code==='Escape')closeStudio();return;}
+      const a=map[e.code];if(a){router.setKey(e.code,a,true);e.preventDefault();}if(e.code==='KeyR')controls.current.reset=true;if(e.code==='KeyV'&&!e.repeat)setView(v=>v==='third'?'first':'third');if(e.code==='KeyE'&&nearby)openStudio(nearby);if(e.code==='Enter'&&!started)begin();};
     const up=e=>{const a=map[e.code];if(a){router.setKey(e.code,a,false);e.preventDefault();}};
     const blur=()=>router.clearAll();
     const hidden=()=>{if(document.hidden)router.clearAll();};
     addEventListener('keydown',down);addEventListener('keyup',up);addEventListener('blur',blur);document.addEventListener('visibilitychange',hidden);
     return()=>{removeEventListener('keydown',down);removeEventListener('keyup',up);removeEventListener('blur',blur);document.removeEventListener('visibilitychange',hidden);};
-  },[started,router,studio,nearby]);
+  },[started,router,studio,nearby,tutorialStep]);
   return <>
-    {started&&<div className="scene-host"><SceneError><Suspense fallback={<div className="loading">3D-WELT WIRD GELADEN …</div>}><GameCanvas controls={controls} quality={quality} onSpeed={onSpeed} onGameEvent={onGameEvent} cosmetics={profile} view={view} paused={!!studio}/></Suspense></SceneError></div>}
+    {started&&<div className="scene-host"><SceneError><Suspense fallback={<div className="loading">3D-WELT WIRD GELADEN …</div>}><GameCanvas controls={controls} quality={quality} onSpeed={onSpeed} onGameEvent={onGameEvent} cosmetics={profile} view={view} paused={!!studio||tutorialStep!==null} tutorialStep={tutorialStep}/></Suspense></SceneError></div>}
     {started&&<div id="hud">
       <div id="top"><div className="brand">FAHRE EIN <em>MURAT.</em></div><div className="pill">🌲 FOREST FREERIDE</div><div className="wallet" data-testid="coins">🪙 {profile.coins.toLocaleString('de-DE')} MURAT-COINS</div></div>
       <div className="speed"><strong data-testid="speed">{kmh}</strong> <span>KM/H</span><small>● FREERIDE + CHALLENGES</small></div>
@@ -201,6 +222,7 @@ export default function App(){
         <button type="button" onClick={()=>openStudio('garage')} aria-label="Garage öffnen">🛠️ GARAGE</button>
         <button type="button" onClick={()=>openStudio('home')} aria-label="Zuhause öffnen">🏠 ZUHAUSE</button>
         <button type="button" onClick={()=>setView(v=>v==='third'?'first':'third')} data-testid="camera-toggle" aria-label="Kamera wechseln">{view==='first'?'👁️ 3RD':'👁️ 1ST'}</button>
+        <button type="button" onClick={()=>{router.clearAll();setTutorialStep(0);}} aria-label="Einführung erneut ansehen">❔ HILFE</button>
       </div>
       {nearby&&!studio&&<div className="nearby-entry" role="status">
         {nearby==='garage'?'🛠️ Garage':'🏠 Zuhause'} in der Nähe!
@@ -208,6 +230,7 @@ export default function App(){
       </div>}
       <div className="hint">WASD · V KAMERA · E GARAGE / ZUHAUSE · R RESET</div>
     </div>}
+    {started&&tutorialStep!==null&&!studio&&<Tutorial step={tutorialStep} onNext={nextTutorial} onSkip={finishTutorial}/>}
     {started&&studio&&<SceneError><Suspense fallback={<div className="loading">STUDIO WIRD GELADEN …</div>}>
       <Customizer room={studio} profile={profile} onChange={customize} onClose={closeStudio} message={studioMessage}/>
     </Suspense></SceneError>}
@@ -216,7 +239,7 @@ export default function App(){
       <p>Dein Scooter. Deine Straße. Dein Wald. Meistere drei Challenges, suche den goldenen Schlüssel und gestalte Fahrer und Scooter.</p>
       <button className="start" onClick={begin}>JETZT FAHREN →</button>
       <p style={{fontSize:12,opacity:.7}}>PC: WASD / Pfeiltasten · Handy: Gas gedrückt halten und nach oben zum Wheelie wischen.</p>
-      <p style={{fontSize:11,opacity:.5}}>REACT THREE FIBER · VERSION 0.5</p>
+      <p style={{fontSize:11,opacity:.5}}>REACT THREE FIBER · VERSION 0.6</p>
     </div></div>}
     {unsupported&&<div className="startup-error" role="alert"><h2>WebGL ist in dieser Vorschau nicht verfügbar.</h2><p>Öffne im Codespace den Port 5173 mit „Open in Browser“ direkt in Safari, Chrome oder Edge.</p><button onClick={()=>location.reload()}>Erneut versuchen</button></div>}
   </>;

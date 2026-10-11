@@ -290,7 +290,25 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused })
   });
   return <group ref={group}><group ref={scooter}><Scooter riderRef={rider} options={cosmetics.garage} rider={cosmetics.rider} showRider={view!=='first'}/></group></group>;
 }
-export default function World({ input, quality, onSpeed, onGameEvent, cosmetics, view, paused }) {
+// Guided camera introduction: free-look at actual buildings and challenge zones
+// while player physics are safely paused. No scene swaps or extra WebGL context.
+function TourCamera({step}){
+  const {camera}=useThree();
+  useFrame((_,frameDt)=>{
+    if(step===null||step===undefined)return;
+    const place=step===0?WORKSHOPS.home:step===1?WORKSHOPS.garage:
+      step===2?CHALLENGES.slalom:{x:roadX(0),z:0};
+    const dt=Math.min(frameDt,.05),k=1-Math.exp(-3.3*dt);
+    const x=place.x,z=place.z;
+    const target=step===3?
+      new THREE.Vector3(x+6.5,3.6,z+9.5):
+      new THREE.Vector3(x+12.5,7.2,z-19.5);
+    camera.position.lerp(target,k);
+    camera.lookAt(x,step===3?1.2:2.1,z);
+  });
+  return null;
+}
+export default function World({ input, quality, onSpeed, onGameEvent, cosmetics, view, paused, tutorialStep=null }) {
   const count = quality === 'low' ? 600 : 1300;
   const trees = useMemo(() => makeTrees(count), [count]);
   const [treasure,setTreasure] = useState(null);
@@ -306,6 +324,6 @@ export default function World({ input, quality, onSpeed, onGameEvent, cosmetics,
     <hemisphereLight args={['#e6f5ff', '#59704b', 2.1]}/>
     <directionalLight position={[-70, 115, -70]} intensity={2.7} color="#ffefd0" castShadow={quality === 'high'} shadow-mapSize={[1024,1024]} shadow-camera-left={-90} shadow-camera-right={90} shadow-camera-top={90} shadow-camera-bottom={-90}/>
     <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[WORLD, WORLD]}/><meshStandardMaterial color="#577749" roughness={1}/></mesh>
-    <Road/><Forest trees={trees}/><ChallengeCourse treasure={treasure}/><Driver input={input} trees={trees} onSpeed={onSpeed} onGameEvent={handleEvent} cosmetics={cosmetics} view={view} paused={paused}/>
+    <Road/><Forest trees={trees}/><ChallengeCourse treasure={treasure}/><Driver input={input} trees={trees} onSpeed={onSpeed} onGameEvent={handleEvent} cosmetics={cosmetics} view={view} paused={paused}/><TourCamera step={tutorialStep}/>
   </>;
 }

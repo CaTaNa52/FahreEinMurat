@@ -60,6 +60,20 @@ Die mobile rechte Steuerfläche ist eine **Ein-Finger-Gestensteuerung**: Finger 
 - **Unbegrenzt wiederholbar und belohnt:** jede erfolgreich abgeschlossene Challenge zahlt ihre Coins erneut aus. Für einen Neustart die leuchtende Startzone verlassen und wieder betreten.
 - Startfelder sind räumlich getrennt (jeweils mindestens 150 m Abstand) und liegen an der Straße. Die Suche ist eine echte Suche: das Objekt wird erst im näheren Sichtbereich als 3D-Schlüssel sichtbar.
 
+## Erste Schritte: überspringbare Einführung
+
+Beim **ersten** Klick auf „JETZT FAHREN“ öffnet sich ein kurzes, vierstufiges 3D-Tutorial:
+1. Kamera zeigt auf **Zuhause**, wo Helm, Kleidung und Uhr angepasst werden.
+2. Kamera zeigt auf die **Murat-Garage**, wo Scooter-Modelle, Farben und Extras verändert werden.
+3. Kamera zeigt die **Challenge-Zone**; leuchtende Felder starten Slalom, Wheelie und die versteckte Schlüsselsuche ohne Navigationshilfen.
+4. **Bedienung** auf Handy und PC sowie Umschalten der First-Person-Kamera.
+
+Die Steuerung ist währenddessen pausiert. **ÜBERSPRINGEN** beendet das Tutorial sofort, **WEITER** geht zur nächsten Station und **LOSFAHREN** startet das Spiel. Es erscheint nach dem Abschluss oder Überspringen nicht mehr automatisch und lässt sich jederzeit über **❔ HILFE** erneut starten. Dies wird unter `fahre-ein-murat-tutorial-seen-v1` lokal gespeichert.
+
+## Tests / CI-Schutz
+
+GitHub Actions startet bei jedem PR auf `main` und jedem Push auf `main`: **Unit-Tests, Produktions-Build, Chromium-E2E auf Desktop und Mobile**. Die Browser-Tests prüfen auch den direkten Zugang zu Zuhause mit defekten/alten Profildaten, Helm an/aus, eine Uhr kaufen, den 3D-Viewer, Wechsel von Garage zu Zuhause, erneutes Laden der Einstellungen, das durchgehende erste Tutorial und das Überspringen. Bei Fehlern sind Playwright-Screenshots und Traces als Actions-Artefakte verfügbar. Bitte **PRs erst nach grüner Pipeline mergen**.
+
 ## Garage, Zuhause und Ich-Perspektive
 
 - **MURAT GARAGE:** Gebäude bei z = +74. 3D-Scooter per Finger/Maus drehen; Modelle City/Sport/Classic, Fahrzeug-, Akzent- und Lichtfarbe, Straßen-/Offroadreifen, Neon-Unterbodenbeleuchtung und Gepäckbox. Einige Extras kosten Murat-Coins, Farben sind kostenlos.
