@@ -37,10 +37,10 @@ Bei einem grauen Bildschirm: Hard-Reload durchführen, Browser-Konsole prüfen u
 | Rückwärts | S oder ↓ | ↓ |
 | Lenken | A / D oder ← / → | ← / → |
 | Bremsen | Shift | BREMSE |
-| Wheelie kontrollieren | Leertaste gedrückt halten, zum Absenken loslassen oder Shift drücken | WHEELIE ↑ gedrückt halten; BREMSE senkt schneller |
+| Wheelie kontrollieren | Leertaste gedrückt halten, zum Absenken loslassen oder Shift drücken | **GAS gedrückt halten und mit demselben Finger zu WHEELIE hochwischen**; zurück zu GAS senkt das Rad |
 | Zurücksetzen | R | ↺ (Desktop) |
 
-Die Touch-Schaltflächen unterstützen gedrückt halten und gleichzeitig Lenken.
+Die mobile rechte Steuerfläche ist eine **Ein-Finger-Gestensteuerung**: Finger auf **GAS** halten, nach **WHEELIE** hochziehen (Gas bleibt gedrückt), wieder zurück zu **GAS** ziehen (Wheelie lösen) oder mit dem Finger zu **BREMSE** ziehen (Gas loslassen und bremsen). Erst wenn der Finger vom Bildschirm abgehoben wird, werden die Eingaben dieser Geste beendet. Gleichzeitiges Lenken mit einem zweiten Finger und separate Wheelie-/Bremsberührungen bleiben möglich. Pointer-Capture verhindert abgebrochene Wischgesten; Mehrfach-Touch und Tastatureingaben werden unabhängig zusammengeführt.
 
 ## Spielwelt
 

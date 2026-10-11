@@ -1,5 +1,6 @@
 import { Component, Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { CHALLENGES } from './gameplay.js';
+import { createInputRouter, gestureActions } from './input.js';
 const GameCanvas = lazy(() => import('./GameCanvas.jsx'));
 class SceneError extends Component {
   constructor(props){super(props);this.state={error:null};}
@@ -7,14 +8,102 @@ class SceneError extends Component {
   componentDidCatch(error,info){console.error('FahreEinMurat 3D:',error,info);}
   render(){return this.state.error?<div className="startup-error" role="alert"><h2>3D konnte nicht gestartet werden</h2><p>{this.state.error.message}</p><p>Öffne die Codespaces-Portvorschau direkt in Safari oder Chrome.</p><button onClick={()=>location.reload()}>Erneut versuchen</button></div>:this.props.children;}
 }
-function Control({action, label, children, controls, className=''}) {
+function Control({ action, label, children, router, className='' }) {
   const [held,setHeld]=useState(false);
-  const stop=()=>{controls.current[action]=false;setHeld(false);};
-  useEffect(()=>()=>{controls.current[action]=false;},[action,controls]);
-  return <button type="button" aria-label={label} className={`ctrl ${className} ${held?'held':''}`}
-    onPointerDown={e=>{e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);controls.current[action]=true;setHeld(true);}}
+  const pointers=useRef(new Set());
+  const stop=e=>{
+    pointers.current.delete(e.pointerId);
+    router.clearPointer(e.pointerId);
+    setHeld(pointers.current.size>0);
+  };
+  useEffect(()=>()=>{for(const id of pointers.current)router.clearPointer(id);},[router]);
+  return <button type="button" aria-label={label} className={'ctrl '+className+(held?' held':'')}
+    onPointerDown={e=>{
+      e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      pointers.current.add(e.pointerId);
+      router.setPointer(e.pointerId,{[action]:true});
+      setHeld(true);
+    }}
     onPointerUp={stop} onPointerCancel={stop} onLostPointerCapture={stop}
     onContextMenu={e=>e.preventDefault()}>{children}</button>;
+}
+// Capture gestures on the pad, NOT on each button. The same touch stays captured
+// while sliding from GAS to WHEELIE or BREMSE, even in mobile Safari.
+function RidePad({router}) {
+  const zone=useRef(null);
+  const buttons=useRef({});
+  const pointers=useRef(new Map());
+  const [active,setActive]=useState({gas:false,wheelie:false,brake:false});
+  const refresh=()=>{
+    const next={gas:false,wheelie:false,brake:false};
+    for(const {origin,mode} of pointers.current.values()){
+      const actions=gestureActions(origin,mode);
+      next.gas ||= !!actions.forward;
+      next.wheelie ||= !!actions.wheelie;
+      next.brake ||= !!actions.brake;
+    }
+    setActive(next);
+  };
+  const findTarget=(x,y)=>{
+    let best=null,nearest=Infinity;
+    for(const name of ['gas','wheelie','brake']){
+      const rect=buttons.current[name]?.getBoundingClientRect();
+      if(!rect)continue;
+      const px=Math.max(rect.left,Math.min(rect.right,x));
+      const py=Math.max(rect.top,Math.min(rect.bottom,y));
+      const distance=Math.hypot(x-px,y-py);
+      if(distance<nearest){nearest=distance;best=name;}
+    }
+    return nearest<=38?best:null; // Short gaps between buttons remain swipeable.
+  };
+  const down=e=>{
+    const element=e.target.closest?.('[data-ride]');
+    if(!element||!zone.current.contains(element))return;
+    e.preventDefault();
+    const mode=element.dataset.ride;
+    pointers.current.set(e.pointerId,{origin:mode,mode});
+    zone.current.setPointerCapture(e.pointerId);
+    router.setPointer(e.pointerId,gestureActions(mode,mode));
+    refresh();
+  };
+  const move=e=>{
+    const prev=pointers.current.get(e.pointerId);
+    if(!prev)return;
+    e.preventDefault();
+    const mode=findTarget(e.clientX,e.clientY)??prev.mode;
+    if(mode===prev.mode)return;
+    pointers.current.set(e.pointerId,{origin:prev.origin,mode});
+    router.setPointer(e.pointerId,gestureActions(prev.origin,mode));
+    refresh();
+  };
+  const up=e=>{
+    if(!pointers.current.has(e.pointerId))return;
+    pointers.current.delete(e.pointerId);
+    router.clearPointer(e.pointerId);
+    refresh();
+  };
+  useEffect(()=>{
+    const clear=()=>{
+      for(const id of pointers.current.keys())router.clearPointer(id);
+      pointers.current.clear();
+      setActive({gas:false,wheelie:false,brake:false});
+    };
+    window.addEventListener('blur',clear);
+    return ()=>{window.removeEventListener('blur',clear);clear();};
+  },[router]);
+  return <div ref={zone} className="ride-pad" data-testid="drive-pad"
+    data-gas={String(active.gas)} data-wheelie={String(active.wheelie)} data-brake={String(active.brake)}
+    onPointerDown={down} onPointerMove={move} onPointerUp={up}
+    onPointerCancel={up} onLostPointerCapture={up} onContextMenu={e=>e.preventDefault()}>
+    <div className="ride-guide">GAS HALTEN · HOCH ZIEHEN = WHEELIE</div>
+    <button ref={el=>{buttons.current.wheelie=el;}} type="button" data-ride="wheelie"
+      aria-label="Wheelie halten" className={'ctrl wheel ride-wheelie'+(active.wheelie?' held':'')}>WHEELIE ↑</button>
+    <button ref={el=>{buttons.current.brake=el;}} type="button" data-ride="brake"
+      aria-label="Bremse" className={'ctrl secondary ride-brake'+(active.brake?' held':'')}>BREMSE</button>
+    <button ref={el=>{buttons.current.gas=el;}} type="button" data-ride="gas"
+      aria-label="Gas" className={'ctrl primary ride-gas'+(active.gas?' held':'')}>GAS ⚡</button>
+  </div>;
 }
 const WALLET_KEY = 'fahre-ein-murat-wallet-v1';
 function readWallet(){
@@ -27,6 +116,9 @@ function readWallet(){
 function supportsWebGL(){try{const canvas=document.createElement('canvas');return !!(canvas.getContext('webgl2')||canvas.getContext('webgl'));}catch{return false;}}
 export default function App(){
   const controls=useRef({forward:false,back:false,left:false,right:false,brake:false,wheelie:false,reset:false});
+  const routerRef=useRef(null);
+  if(!routerRef.current)routerRef.current=createInputRouter(controls);
+  const router=routerRef.current;
   const [started,setStarted]=useState(false);
   const [unsupported,setUnsupported]=useState(false);
   const [wallet,setWallet]=useState(readWallet);
@@ -61,12 +153,13 @@ export default function App(){
   };
   useEffect(()=>{
     const map={KeyW:'forward',ArrowUp:'forward',KeyS:'back',ArrowDown:'back',KeyA:'left',ArrowLeft:'left',KeyD:'right',ArrowRight:'right',ShiftLeft:'brake',ShiftRight:'brake',Space:'wheelie'};
-    const down=e=>{const a=map[e.code];if(a){controls.current[a]=true;e.preventDefault();}if(e.code==='KeyR')controls.current.reset=true;if(e.code==='Enter'&&!started)begin();};
-    const up=e=>{const a=map[e.code];if(a){controls.current[a]=false;e.preventDefault();}};
-    const blur=()=>{for(const key in controls.current)controls.current[key]=false;};
-    addEventListener('keydown',down);addEventListener('keyup',up);addEventListener('blur',blur);
-    return()=>{removeEventListener('keydown',down);removeEventListener('keyup',up);removeEventListener('blur',blur);};
-  },[started]);
+    const down=e=>{const a=map[e.code];if(a){router.setKey(e.code,a,true);e.preventDefault();}if(e.code==='KeyR')controls.current.reset=true;if(e.code==='Enter'&&!started)begin();};
+    const up=e=>{const a=map[e.code];if(a){router.setKey(e.code,a,false);e.preventDefault();}};
+    const blur=()=>router.clearAll();
+    const hidden=()=>{if(document.hidden)router.clearAll();};
+    addEventListener('keydown',down);addEventListener('keyup',up);addEventListener('blur',blur);document.addEventListener('visibilitychange',hidden);
+    return()=>{removeEventListener('keydown',down);removeEventListener('keyup',up);removeEventListener('blur',blur);document.removeEventListener('visibilitychange',hidden);};
+  },[started,router]);
   return <>
     {started&&<div className="scene-host"><SceneError><Suspense fallback={<div className="loading">3D-WELT WIRD GELADEN …</div>}><GameCanvas controls={controls} quality={quality} onSpeed={onSpeed} onGameEvent={onGameEvent}/></Suspense></SceneError></div>}
     {started&&<div id="hud">
@@ -90,19 +183,17 @@ export default function App(){
           <div className="challenge-help">Verlasse das leuchtende Feld und fahre erneut hinein, um es wieder zu versuchen.</div>
         </>}
       </div>}
-      <div className="controls left"><div className="pad"><span></span><Control controls={controls} action="forward" label="Vorwärts">↑</Control><span></span>
-      <Control controls={controls} action="left" label="Links">←</Control><Control controls={controls} action="back" label="Rückwärts">↓</Control><Control controls={controls} action="right" label="Rechts">→</Control></div></div>
-      <div className="controls right"><button className="ctrl reset" aria-label="Zurücksetzen" onClick={()=>{controls.current.reset=true;controls.current.wheelie=false;}}>↺</button><div className="stack">
-      <Control controls={controls} action="wheelie" label="Wheelie halten" className="wheel">WHEELIE ↑</Control>
-      <Control controls={controls} action="brake" label="Bremse" className="secondary">BREMSE</Control></div>
-      <Control controls={controls} action="forward" label="Gas" className="primary">GAS ⚡</Control></div>
+      <div className="controls left"><div className="pad"><span></span><Control router={router} action="forward" label="Vorwärts">↑</Control><span></span>
+      <Control router={router} action="left" label="Links">←</Control><Control router={router} action="back" label="Rückwärts">↓</Control><Control router={router} action="right" label="Rechts">→</Control></div></div>
+      <div className="controls right"><button className="ctrl reset" aria-label="Zurücksetzen" onClick={()=>{router.clearAll();controls.current.reset=true;}}>↺</button>
+      <RidePad router={router}/></div>
       <div className="hint">WASD / PFEILTASTEN · SHIFT BREMSEN · LEERTASTE WHEELIE · R RESET</div>
     </div>}
     {!started&&!unsupported&&<div className="overlay"><div className="intro"><div className="eyebrow">OPEN WORLD SCOOTER GAME</div>
       <h1>FAHRE<br/>EIN <i>MURAT.</i></h1>
       <p>Dein Scooter. Deine Straße. Dein Wald. Meistere Slalom und Wheelie-Challenges und verdiene Murat-Coins.</p>
       <button className="start" onClick={begin}>JETZT FAHREN →</button>
-      <p style={{fontSize:12,opacity:.7}}>PC: WASD / Pfeiltasten · Handy: Touch-Buttons</p>
+      <p style={{fontSize:12,opacity:.7}}>PC: WASD / Pfeiltasten · Handy: Gas gedrückt halten und nach oben zum Wheelie wischen.</p>
       <p style={{fontSize:11,opacity:.5}}>REACT THREE FIBER · VERSION 0.4</p>
     </div></div>}
     {unsupported&&<div className="startup-error" role="alert"><h2>WebGL ist in dieser Vorschau nicht verfügbar.</h2><p>Öffne im Codespace den Port 5173 mit „Open in Browser“ direkt in Safari, Chrome oder Edge.</p><button onClick={()=>location.reload()}>Erneut versuchen</button></div>}
