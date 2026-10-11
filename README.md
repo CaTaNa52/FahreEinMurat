@@ -37,7 +37,7 @@ Bei einem grauen Bildschirm: Hard-Reload durchführen, Browser-Konsole prüfen u
 | Rückwärts | S oder ↓ | ↓ |
 | Lenken | A / D oder ← / → | ← / → |
 | Bremsen | Shift | BREMSE |
-| Wheelie | Leertaste halten | WHEELIE ↑ / RAD RUNTER ↓ |
+| Wheelie kontrollieren | Leertaste gedrückt halten, zum Absenken loslassen oder Shift drücken | WHEELIE ↑ gedrückt halten; BREMSE senkt schneller |
 | Zurücksetzen | R | ↺ (Desktop) |
 
 Die Touch-Schaltflächen unterstützen gedrückt halten und gleichzeitig Lenken.
@@ -50,9 +50,17 @@ Die Touch-Schaltflächen unterstützen gedrückt halten und gleichzeitig Lenken.
 - Third-Person-Folgekamera, Bremsen, Rückwärtsfahren, Baumberührung und Wheelie
 - Mobile Renderauflösung begrenzt, Schatten auf Mobilgeräten deaktiviert
 
+## Challenges und Coins
+
+- **SLALOM-SPRINT:** Leuchtendes grünes Startfeld etwa 22 Meter vor dem Spawnpunkt; innerhalb von 40 Sekunden abwechselnd rechts und links durch die grün markierten Seiten an sieben Straßenleitkegeln vorbeifahren und hinter der Ziellinie ankommen. Ein Hütchen berühren oder eine Seite verfehlen beendet den Versuch.
+- **WHEELIE-BALANCE:** Blaues Startfeld etwa 151 Meter in Fahrtrichtung; innerhalb von 35 Sekunden einen Wheelie 4 Sekunden lang **ununterbrochen** mit einem Winkel zwischen ca. 13° und 40° und etwas Vorwärtsgeschwindigkeit halten. Zu hohes Aufstellen (rund 50°) führt zum Sturz, der Fahrer wird automatisch wieder aufgerichtet.
+- Das Wheelie-Handling simuliert Winkelgeschwindigkeit, Antriebsmoment, Schwerkraft und Dämpfung. Gedrückthalten hebt das Vorderrad dynamisch; Loslassen/Bremsen senkt es wieder. Es handelt sich um ein Arcade-Physikmodell, nicht um eine vollständige Mehrkörper-Simulation.
+- Pro Challenge gibt es **1.000 Murat-Coins beim ersten erfolgreichen Abschluss**; Wiederholungen geben keine weiteren Coins. Kontostand und einmalige Gewinne werden nur im Browser-LocalStorage gespeichert (ohne Backend oder Accounts). Zum Wiederholen eines gescheiterten Kurses die Startzone verlassen und erneut betreten.
+
 ## Testen
 
 ```bash
+npm run test:unit
 npm run build
 npx playwright install chromium
 npm run test:e2e
