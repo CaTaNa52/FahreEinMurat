@@ -1,6 +1,6 @@
 # FAHRE EIN MURAT 🛴
 
-Ein browserbasiertes 3D-E-Scooter-Freeride-Spiel mit Third-Person-Kamera, bewaldeter Welt, Fahrphysik und Wheelies. Auf PC und Smartphone nutzbar.
+Ein browserbasiertes 3D-E-Scooter-Freeride-Spiel mit Third- und First-Person-Kamera, bewaldeter Welt, Fahrphysik, drei Challenges, Garage und Zuhause. Auf PC und Smartphone nutzbar.
 
 ## Architektur – wie ONEVERSE
 
@@ -39,6 +39,8 @@ Bei einem grauen Bildschirm: Hard-Reload durchführen, Browser-Konsole prüfen u
 | Bremsen | Shift | BREMSE |
 | Wheelie kontrollieren | Leertaste gedrückt halten, zum Absenken loslassen oder Shift drücken | **GAS gedrückt halten und mit demselben Finger zu WHEELIE hochwischen**; zurück zu GAS senkt das Rad |
 | Zurücksetzen | R | ↺ (Desktop) |
+| Kamera wechseln | V | 👁️ 1ST / 3RD |
+| Garage/Zuhause öffnen | E in der Nähe des Gebäudes | Bildschirm-Buttons oder Nähe-Button |
 
 Die mobile rechte Steuerfläche ist eine **Ein-Finger-Gestensteuerung**: Finger auf **GAS** halten, nach **WHEELIE** hochziehen (Gas bleibt gedrückt), wieder zurück zu **GAS** ziehen (Wheelie lösen) oder mit dem Finger zu **BREMSE** ziehen (Gas loslassen und bremsen). Erst wenn der Finger vom Bildschirm abgehoben wird, werden die Eingaben dieser Geste beendet. Gleichzeitiges Lenken mit einem zweiten Finger und separate Wheelie-/Bremsberührungen bleiben möglich. Pointer-Capture verhindert abgebrochene Wischgesten; Mehrfach-Touch und Tastatureingaben werden unabhängig zusammengeführt.
 
@@ -52,10 +54,20 @@ Die mobile rechte Steuerfläche ist eine **Ein-Finger-Gestensteuerung**: Finger 
 
 ## Challenges und Coins
 
-- **SLALOM-SPRINT:** Leuchtendes grünes Startfeld etwa 22 Meter vor dem Spawnpunkt; innerhalb von 40 Sekunden abwechselnd rechts und links durch die grün markierten Seiten an sieben Straßenleitkegeln vorbeifahren und hinter der Ziellinie ankommen. Ein Hütchen berühren oder eine Seite verfehlen beendet den Versuch.
-- **WHEELIE-BALANCE:** Blaues Startfeld etwa 151 Meter in Fahrtrichtung; innerhalb von 35 Sekunden einen Wheelie 4 Sekunden lang **ununterbrochen** mit einem Winkel zwischen ca. 13° und 40° und etwas Vorwärtsgeschwindigkeit halten. Zu hohes Aufstellen (rund 50°) führt zum Sturz, der Fahrer wird automatisch wieder aufgerichtet.
-- Das Wheelie-Handling simuliert Winkelgeschwindigkeit, Antriebsmoment, Schwerkraft und Dämpfung. Gedrückthalten hebt das Vorderrad dynamisch; Loslassen/Bremsen senkt es wieder. Es handelt sich um ein Arcade-Physikmodell, nicht um eine vollständige Mehrkörper-Simulation.
-- Pro Challenge gibt es **1.000 Murat-Coins beim ersten erfolgreichen Abschluss**; Wiederholungen geben keine weiteren Coins. Kontostand und einmalige Gewinne werden nur im Browser-LocalStorage gespeichert (ohne Backend oder Accounts). Zum Wiederholen eines gescheiterten Kurses die Startzone verlassen und erneut betreten.
+- **SLALOM-SPRINT** (grüne Startzone bei z = -24): sieben orange-weiße Leitkegel, abwechselnd rechts/links, Ziellinie, 40 Sekunden. **1.000 Coins**.
+- **WHEELIE-BALANCE** (blaue Startzone bei z = -240): vier Sekunden durchgehende Balance innerhalb von 35 Sekunden. **1.000 Coins**.
+- **GOLDENE SCHLÜSSELSUCHE** (goldene Startzone bei z = -445): finde einen versteckten goldenen Schlüssel in 120 Sekunden. Der Schlüssel erscheint bei **jedem Start an einem anderen von zwölf Plätzen**, ohne Marker, Kompass, Entfernungsangabe oder Richtungspfeil. **1.250 Coins**.
+- **Unbegrenzt wiederholbar und belohnt:** jede erfolgreich abgeschlossene Challenge zahlt ihre Coins erneut aus. Für einen Neustart die leuchtende Startzone verlassen und wieder betreten.
+- Startfelder sind räumlich getrennt (jeweils mindestens 150 m Abstand) und liegen an der Straße. Die Suche ist eine echte Suche: das Objekt wird erst im näheren Sichtbereich als 3D-Schlüssel sichtbar.
+
+## Garage, Zuhause und Ich-Perspektive
+
+- **MURAT GARAGE:** Gebäude bei z = +74. 3D-Scooter per Finger/Maus drehen; Modelle City/Sport/Classic, Fahrzeug-, Akzent- und Lichtfarbe, Straßen-/Offroadreifen, Neon-Unterbodenbeleuchtung und Gepäckbox. Einige Extras kosten Murat-Coins, Farben sind kostenlos.
+- **ZUHAUSE:** Gebäude bei z = +158. Drehbarer 3D-Charakter mit Helm an/aus und Helmfarbe, Jacken-/Hosenfarbe, Armbanduhr an/aus und Uhrenfarbe.
+- **Zugriff:** in der Nähe des Gebäudes E drücken oder im HUD Garage/Zuhause anwählen. Der Scooter bleibt während des Konfigurierens stehen. Änderungen sind sofort an der Spielfigur und am Scooter sichtbar.
+- **Kameramodus:** V auf Tastatur oder Schaltfläche **👁️ 1ST / 3RD** auf Touchscreen. Wechselt zwischen First-Person und Verfolgerkamera.
+- Coins, freigeschaltete Extras und Farben werden lokal im Browser gespeichert (kein Login, Backend oder Supabase).
+- Die Scooterphysik ist ein anpassbares Arcade-Physikmodell, kein vollständiger Rigid-Body-Simulator.
 
 ## Testen
 
@@ -78,7 +90,11 @@ src/
   main.jsx          React-Einstieg
   App.jsx           Startbildschirm, HUD, mobile Steuerung
   GameCanvas.jsx    React Three Fiber Canvas
-  World.jsx         3D-Welt, Scooter, Fahrer, Fahrsimulation
+  World.jsx         3D-Welt, Gebäude, Suche, Fahrsimulation
+  Models.jsx        Scooter- und Fahrermodell samt Kosmetik
+  Customizer.jsx    3D-Konfigurator mit drehbarer Vorschau
+  gameplay.js       Challenge-Regeln und zufällige Such-Spawns
+  customization.js  Shop-Preise, Profile und LocalStorage
   style.css         Responsive Layout
 tests/e2e/           Chromium-Browser-Smoketests
 .github/workflows/   Build- und Browser-Tests
