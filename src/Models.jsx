@@ -96,10 +96,16 @@ export function Scooter({ options, rider, riderRef, showRider=true }) {
       <boxGeometry args={[.55,.41,.48]}/>
       <meshStandardMaterial color={safe.trim} metalness={.2} roughness={.5}/>
     </mesh>}
-    {safe.underglow&&<mesh position={[0,.29,.04]} rotation={[-Math.PI/2,0,0]}>
-      <planeGeometry args={[.78,1.7]}/>
-      <meshBasicMaterial color={safe.body} transparent opacity={.65} depthWrite={false}/>
-    </mesh>}
+    {safe.underglow&&<group>
+      {[-1,1].map(side=><mesh key={side} position={[side*.23,.335,.02]}>
+        <boxGeometry args={[.047,.045,1.04]}/>
+        <meshStandardMaterial color={safe.glowColor??'#55ffcf'} emissive={safe.glowColor??'#55ffcf'} emissiveIntensity={3.5} toneMapped={false}/>
+      </mesh>)}
+      <mesh position={[0,.33,-.49]}>
+        <boxGeometry args={[.33,.052,.045]}/>
+        <meshStandardMaterial color={safe.glowColor??'#55ffcf'} emissive={safe.glowColor??'#55ffcf'} emissiveIntensity={3.5} toneMapped={false}/>
+      </mesh>
+    </group>}
     {showRider&&<group ref={riderRef}><Rider options={rider}/></group>}
   </group>;
 }

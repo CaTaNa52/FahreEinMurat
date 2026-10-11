@@ -188,3 +188,19 @@ body{position:fixed;inset:0;-webkit-touch-callout:none;-webkit-user-select:none}
 .tour-next{background:#c8ff57;color:#102118;font-weight:950;border:0;border-radius:14px;padding:14px 22px;font-size:13px;cursor:pointer}
 @media(max-width:700px){.tour-overlay{padding:calc(12px + env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}.tour-top span{font-size:9px}.tour-top button{font-size:10px;padding:9px 10px}.tour-panel{padding:17px 18px;max-height:58dvh;border-radius:18px}.tour-panel h2{font-size:24px}.tour-panel p{font-size:13px;line-height:1.42}.tour-bottom{margin-top:15px}.tour-next{padding:12px 16px}}
 @media(max-height:470px) and (orientation:landscape){.tour-overlay{flex-direction:row;align-items:flex-end}.tour-top{position:absolute;top:8px;left:12px;right:12px}.tour-panel{width:min(435px,57vw);max-height:calc(100dvh - 58px);padding:12px 15px}.tour-panel h2{font-size:19px;margin:5px 0}.tour-panel p{font-size:11px;line-height:1.35}.tour-bottom{margin-top:9px}.tour-next{padding:9px 12px}}
+
+/* Street furniture interactions; same ergonomic touch targets as workshop prompts. */
+.bench-entry{position:absolute;bottom:164px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:9px;padding:9px 12px;
+  border:1px solid #f6dab36e;border-radius:14px;background:#17302be8;
+  color:#fff5df;font-size:12px;font-weight:800;white-space:nowrap;pointer-events:auto;z-index:3;
+  box-shadow:0 7px 20px #07151155}
+.bench-entry button{border:0;background:#d4f59b;color:#193323;font-size:11px;
+  font-weight:900;border-radius:10px;padding:9px 11px;cursor:pointer}
+@media(max-width:700px){
+  .bench-entry{bottom:177px;font-size:10px;max-width:95vw;padding:6px 8px;gap:5px}
+  .bench-entry button{font-size:10px;padding:7px}
+}
+@media(max-height:470px) and (orientation:landscape){
+  .bench-entry{bottom:114px;left:auto;right:8px;transform:none}
+}

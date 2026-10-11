@@ -123,6 +123,8 @@ export default function App(){
   const [studio,setStudio]=useState(null);
   const [studioMessage,setStudioMessage]=useState('');
   const [nearby,setNearby]=useState(null);
+  const [nearBench,setNearBench]=useState(null);
+  const [seated,setSeated]=useState(false);
   const [tutorialStep,setTutorialStep]=useState(null);
   const [quality,setQuality]=useState('high');
   const [kmh,setKmh]=useState(0);
@@ -131,6 +133,14 @@ export default function App(){
   const onGameEvent=useCallback(event=>{
     if(event.type==='near'){
       setNearby(prev=>prev===event.place?prev:event.place);
+      return;
+    }
+    if(event.type==='benchNearby'){
+      setNearBench(prev=>prev===event.benchId?prev:event.benchId);
+      return;
+    }
+    if(event.type==='benchSeat'){
+      setSeated(event.seated);
       return;
     }
     if(event.type==='won'){
@@ -183,13 +193,16 @@ export default function App(){
         e.preventDefault();return;
       }
       if(studio){if(e.code==='Escape')closeStudio();return;}
-      const a=map[e.code];if(a){router.setKey(e.code,a,true);e.preventDefault();}if(e.code==='KeyR')controls.current.reset=true;if(e.code==='KeyV'&&!e.repeat)setView(v=>v==='third'?'first':'third');if(e.code==='KeyE'&&nearby)openStudio(nearby);if(e.code==='Enter'&&!started)begin();};
+      const a=map[e.code];if(a){router.setKey(e.code,a,true);e.preventDefault();}if(e.code==='KeyR')controls.current.reset=true;if(e.code==='KeyV'&&!e.repeat)setView(v=>v==='third'?'first':'third');if(e.code==='KeyE'&&!e.repeat){
+        if(seated||(!nearby&&nearBench))controls.current.interact=true;
+        else if(nearby)openStudio(nearby);
+      }if(e.code==='Enter'&&!started)begin();};
     const up=e=>{const a=map[e.code];if(a){router.setKey(e.code,a,false);e.preventDefault();}};
     const blur=()=>router.clearAll();
     const hidden=()=>{if(document.hidden)router.clearAll();};
     addEventListener('keydown',down);addEventListener('keyup',up);addEventListener('blur',blur);document.addEventListener('visibilitychange',hidden);
     return()=>{removeEventListener('keydown',down);removeEventListener('keyup',up);removeEventListener('blur',blur);document.removeEventListener('visibilitychange',hidden);};
-  },[started,router,studio,nearby,tutorialStep]);
+  },[started,router,studio,nearby,nearBench,seated,tutorialStep]);
   return <>
     {started&&<div className="scene-host"><SceneError><Suspense fallback={<div className="loading">3D-WELT WIRD GELADEN …</div>}><GameCanvas controls={controls} quality={quality} onSpeed={onSpeed} onGameEvent={onGameEvent} cosmetics={profile} view={view} paused={!!studio||tutorialStep!==null} tutorialStep={tutorialStep}/></Suspense></SceneError></div>}
     {started&&<div id="hud">
@@ -224,6 +237,13 @@ export default function App(){
         <button type="button" onClick={()=>setView(v=>v==='third'?'first':'third')} data-testid="camera-toggle" aria-label="Kamera wechseln">{view==='first'?'👁️ 3RD':'👁️ 1ST'}</button>
         <button type="button" onClick={()=>{router.clearAll();setTutorialStep(0);}} aria-label="Einführung erneut ansehen">❔ HILFE</button>
       </div>
+      {(seated||nearBench)&&!studio&&tutorialStep===null&&<div className="bench-entry" role="status">
+        <span>{seated?'🪑 Du sitzt auf der Bank':'🪑 Sitzbank in der Nähe'}</span>
+        <button type="button" aria-label={seated?'Von Bank aufstehen':'Auf Bank setzen'}
+          onClick={()=>{router.clearAll();controls.current.interact=true;}}>
+          {seated?'AUFSTEHEN (E)':'HINSETZEN (E)'}
+        </button>
+      </div>}
       {nearby&&!studio&&<div className="nearby-entry" role="status">
         {nearby==='garage'?'🛠️ Garage':'🏠 Zuhause'} in der Nähe!
         <button type="button" onClick={()=>openStudio(nearby)}>ÖFFNEN (E)</button>
@@ -239,7 +259,7 @@ export default function App(){
       <p>Dein Scooter. Deine Straße. Dein Wald. Meistere drei Challenges, suche den goldenen Schlüssel und gestalte Fahrer und Scooter.</p>
       <button className="start" onClick={begin}>JETZT FAHREN →</button>
       <p style={{fontSize:12,opacity:.7}}>PC: WASD / Pfeiltasten · Handy: Gas gedrückt halten und nach oben zum Wheelie wischen.</p>
-      <p style={{fontSize:11,opacity:.5}}>REACT THREE FIBER · VERSION 0.6</p>
+      <p style={{fontSize:11,opacity:.5}}>REACT THREE FIBER · VERSION 0.7</p>
     </div></div>}
     {unsupported&&<div className="startup-error" role="alert"><h2>WebGL ist in dieser Vorschau nicht verfügbar.</h2><p>Öffne im Codespace den Port 5173 mit „Open in Browser“ direkt in Safari, Chrome oder Edge.</p><button onClick={()=>location.reload()}>Erneut versuchen</button></div>}
   </>;

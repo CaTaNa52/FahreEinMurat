@@ -2,7 +2,7 @@
 export const PROFILE_KEY='fahre-ein-murat-profile-v2';
 export const DEFAULT_GARAGE={
   model:'city',body:'#53e4ab',trim:'#1d3035',light:'#fff0b8',
-  tires:'road',underglow:false,box:false
+  tires:'road',underglow:false,glowColor:'#55ffcf',box:false
 };
 export const DEFAULT_RIDER={
   helmet:true,helmetColor:'#20282d',

@@ -74,6 +74,15 @@ Die Steuerung ist währenddessen pausiert. **ÜBERSPRINGEN** beendet das Tutoria
 
 GitHub Actions startet bei jedem PR auf `main` und jedem Push auf `main`: **Unit-Tests, Produktions-Build, Chromium-E2E auf Desktop und Mobile**. Die Browser-Tests prüfen auch den direkten Zugang zu Zuhause mit defekten/alten Profildaten, Helm an/aus, eine Uhr kaufen, den 3D-Viewer, Wechsel von Garage zu Zuhause, erneutes Laden der Einstellungen, das durchgehende erste Tutorial und das Überspringen. Bei Fehlern sind Playwright-Screenshots und Traces als Actions-Artefakte verfügbar. Bitte **PRs erst nach grüner Pipeline mergen**.
 
+## Straßen, Häuser, Ampeln und Sitzbänke
+
+- Mehrere echte Seitenstraßen/Kreuzungen verbinden sich mit der Hauptstraße. Kreuzungen besitzen markierte Übergänge, Ampeln mit wechselnden Lichtphasen und Straßenlaternen.
+- Das Zuhause hat nun ein zweiflügeliges Satteldach, Fensterrahmen, eine Eingangstür, Stufen und Pflanzen. Die Garage erhält eine sichtbare Torfassade; weitere zufahrtnahe Wohnhäuser, Cafés und kleine Läden bilden Straßenzüge. Fremde Gebäude sind reine Kulisse **ohne Zutrittsmöglichkeit**.
+- **Gebäudekollisionen:** Scooter kann nicht mehr durch Häuser fahren. Eine kreisförmige Spieler-Kollisionshülle gleitet an rechteckigen Gebäudegrundrissen, Bänken und Laternen vorbei; Bewegung wird in kleine Schritte unterteilt, damit man mit Tempo nicht durch Wände tunnelt.
+- **Sitzbänke:** Fahr zur Bank, bremse ab und drücke **E** oder am Smartphone **HINSETZEN**. Die Spielfigur sitzt dann auf der Bank. **E/AUFSTEHEN** setzt die Fahrt fort. Sitzbänke sind ebenfalls Hindernisse.
+- **Unterbodenbeleuchtung:** In der Garage Neon aktivieren und die **Neon-Farbe** wählen. An der Unterseite des Scooters leuchten LED-Leisten; unter dem Fahrzeug erscheint ein weich auslaufender Lichtkegel auf dem Boden, ergänzt durch eine tatsächliche Punktlichtquelle mit physikalischer Lichtabnahme. Die Beleuchtung folgt dem Scooter und bleibt beim Wheelie auf der Fahrbahn.
+- Die Darstellung ist für Desktop und mobile Browser ausgelegt. Straßenlaternen nutzen auf mobilen Geräten überwiegend selbstleuchtende Materialien statt vieler teurer dynamischer Lichtquellen.
+
 ## Garage, Zuhause und Ich-Perspektive
 
 - **MURAT GARAGE:** Gebäude bei z = +74. 3D-Scooter per Finger/Maus drehen; Modelle City/Sport/Classic, Fahrzeug-, Akzent- und Lichtfarbe, Straßen-/Offroadreifen, Neon-Unterbodenbeleuchtung und Gepäckbox. Einige Extras kosten Murat-Coins, Farben sind kostenlos.
