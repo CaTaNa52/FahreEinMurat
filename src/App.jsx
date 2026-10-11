@@ -21,13 +21,26 @@ function Control({ action, label, children, router, className='' }) {
     router.clearPointer(e.pointerId);
     setHeld(pointers.current.size>0);
   };
-  useEffect(()=>()=>{for(const id of pointers.current)router.clearPointer(id);},[router]);
+  useEffect(()=>{
+    const update=()=>{
+      for(const id of [...pointers.current]){
+        if(!router.hasPointer(id))pointers.current.delete(id);
+      }
+      setHeld(pointers.current.size>0);
+    };
+    const unsubscribe=router.subscribe(update);
+    return ()=>{unsubscribe();for(const id of pointers.current)router.clearPointer(id);pointers.current.clear();};
+  },[router]);
   return <button type="button" aria-label={label} className={'ctrl '+className+(held?' held':'')}
     onPointerDown={e=>{
       e.preventDefault();
-      e.currentTarget.setPointerCapture(e.pointerId);
+      // Pointer capture helps normal drags; native window listeners are the
+      // fallback for iOS when capture/React pointerup gets interrupted.
+      try{e.currentTarget.setPointerCapture(e.pointerId);}catch{/* Safari */}
       pointers.current.add(e.pointerId);
-      router.setPointer(e.pointerId,{[action]:true});
+      router.setPointer(e.pointerId,{[action]:true},{
+        pointerType:e.pointerType,clientX:e.clientX,clientY:e.clientY
+      });
       setHeld(true);
     }}
     onPointerUp={stop} onPointerCancel={stop} onLostPointerCapture={stop}
@@ -42,7 +55,8 @@ function RidePad({router}) {
   const [active,setActive]=useState({gas:false,wheelie:false,brake:false});
   const refresh=()=>{
     const next={gas:false,wheelie:false,brake:false};
-    for(const {origin,mode} of pointers.current.values()){
+    for(const [id,{origin,mode}] of pointers.current){
+      if(!router.hasPointer(id)){pointers.current.delete(id);continue;}
       const actions=gestureActions(origin,mode);
       next.gas ||= !!actions.forward;
       next.wheelie ||= !!actions.wheelie;
@@ -68,14 +82,21 @@ function RidePad({router}) {
     e.preventDefault();
     const mode=element.dataset.ride;
     pointers.current.set(e.pointerId,{origin:mode,mode});
-    zone.current.setPointerCapture(e.pointerId);
-    router.setPointer(e.pointerId,gestureActions(mode,mode));
+    try{zone.current.setPointerCapture(e.pointerId);}catch{/* Safari */}
+    router.setPointer(e.pointerId,gestureActions(mode,mode),{
+      pointerType:e.pointerType,clientX:e.clientX,clientY:e.clientY
+    });
     refresh();
   };
   const move=e=>{
     const prev=pointers.current.get(e.pointerId);
     if(!prev)return;
+    // Don't resurrect an input cleared globally by blur, touchcancel, or reset.
+    if(!router.hasPointer(e.pointerId)){
+      pointers.current.delete(e.pointerId);refresh();return;
+    }
     e.preventDefault();
+    router.movePointer(e.pointerId,e.clientX,e.clientY);
     const mode=findTarget(e.clientX,e.clientY)??prev.mode;
     if(mode===prev.mode)return;
     pointers.current.set(e.pointerId,{origin:prev.origin,mode});
@@ -89,13 +110,14 @@ function RidePad({router}) {
     refresh();
   };
   useEffect(()=>{
-    const clear=()=>{
+    // Shared router is the source of truth. Global touchend/pointerup and
+    // clearAll must also update the visual "held" state on the touch pad.
+    const unsubscribe=router.subscribe(refresh);
+    return ()=>{
+      unsubscribe();
       for(const id of pointers.current.keys())router.clearPointer(id);
       pointers.current.clear();
-      setActive({gas:false,wheelie:false,brake:false});
     };
-    window.addEventListener('blur',clear);
-    return ()=>{window.removeEventListener('blur',clear);clear();};
   },[router]);
   return <div ref={zone} className="ride-pad" data-testid="drive-pad"
     data-gas={String(active.gas)} data-wheelie={String(active.wheelie)} data-brake={String(active.brake)}
@@ -116,6 +138,39 @@ export default function App(){
   const routerRef=useRef(null);
   if(!routerRef.current)routerRef.current=createInputRouter(controls);
   const router=routerRef.current;
+  useEffect(()=>{
+    const endPointer=e=>router.clearPointer(e.pointerId);
+    // Track raw TouchEvents independently of PointerEvents. In particular,
+    // older Safari/PWA versions can omit a captured element's pointerup.
+    const touchStart=e=>router.trackTouches('start',e.changedTouches,e.touches);
+    const touchMove=e=>router.trackTouches('move',e.changedTouches,e.touches);
+    const touchEnd=e=>router.trackTouches('end',e.changedTouches,e.touches);
+    const clear=()=>router.clearAll();
+    const visibility=()=>{if(document.hidden)clear();};
+    window.addEventListener('pointerup',endPointer,true);
+    window.addEventListener('pointercancel',endPointer,true);
+    window.addEventListener('lostpointercapture',endPointer,true);
+    window.addEventListener('touchstart',touchStart,{capture:true,passive:true});
+    window.addEventListener('touchmove',touchMove,{capture:true,passive:true});
+    window.addEventListener('touchend',touchEnd,{capture:true,passive:true});
+    window.addEventListener('touchcancel',touchEnd,{capture:true,passive:true});
+    window.addEventListener('blur',clear);
+    window.addEventListener('pagehide',clear);
+    document.addEventListener('visibilitychange',visibility);
+    return ()=>{
+      window.removeEventListener('pointerup',endPointer,true);
+      window.removeEventListener('pointercancel',endPointer,true);
+      window.removeEventListener('lostpointercapture',endPointer,true);
+      window.removeEventListener('touchstart',touchStart,true);
+      window.removeEventListener('touchmove',touchMove,true);
+      window.removeEventListener('touchend',touchEnd,true);
+      window.removeEventListener('touchcancel',touchEnd,true);
+      window.removeEventListener('blur',clear);
+      window.removeEventListener('pagehide',clear);
+      document.removeEventListener('visibilitychange',visibility);
+      clear();
+    };
+  },[router]);
   const [started,setStarted]=useState(false);
   const [unsupported,setUnsupported]=useState(false);
   const [profile,setProfile]=useState(()=>loadProfile(localStorage));
@@ -268,7 +323,7 @@ export default function App(){
       <p>Dein Scooter. Deine Straße. Dein Wald. Meistere drei Challenges, suche den goldenen Schlüssel und gestalte Fahrer und Scooter.</p>
       <button className="start" onClick={begin}>JETZT FAHREN →</button>
       <p style={{fontSize:12,opacity:.7}}>PC: WASD / Pfeiltasten · Handy: Gas gedrückt halten und nach oben zum Wheelie wischen.</p>
-      <p style={{fontSize:11,opacity:.5}}>REACT THREE FIBER · VERSION 0.8</p>
+      <p style={{fontSize:11,opacity:.5}}>REACT THREE FIBER · VERSION 0.9</p>
     </div></div>}
     {unsupported&&<div className="startup-error" role="alert"><h2>WebGL ist in dieser Vorschau nicht verfügbar.</h2><p>Öffne im Codespace den Port 5173 mit „Open in Browser“ direkt in Safari, Chrome oder Edge.</p><button onClick={()=>location.reload()}>Erneut versuchen</button></div>}
   </>;
