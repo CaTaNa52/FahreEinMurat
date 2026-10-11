@@ -33,16 +33,16 @@ Bei einem grauen Bildschirm: Hard-Reload durchführen, Browser-Konsole prüfen u
 
 | Aktion | PC | Handy |
 |---|---|---|
-| Gas / vorwärts | W oder ↑ | GAS oder ↑ |
-| Rückwärts | S oder ↓ | ↓ |
-| Lenken | A / D oder ← / → | ← / → |
-| Bremsen | Shift | BREMSE |
+| Gas / vorwärts | W oder ↑ | Nur GAS (halten) |
+| Rückwärts | S oder ↓ | BREMSE halten: zuerst anhalten, dann langsam rückwärts |
+| Lenken | A / D oder ← / → | Zwei größere Links-/Rechts-Pfeile |
+| Bremsen | Shift (lang halten = rückwärts) | BREMSE (lang halten = rückwärts) |
 | Wheelie kontrollieren | Leertaste gedrückt halten, zum Absenken loslassen oder Shift drücken | **GAS gedrückt halten und mit demselben Finger zu WHEELIE hochwischen**; zurück zu GAS senkt das Rad |
 | Zurücksetzen | R | ↺ (Desktop) |
 | Kamera wechseln | V | 👁️ 1ST / 3RD |
 | Garage/Zuhause öffnen | E in der Nähe des Gebäudes | Bildschirm-Buttons oder Nähe-Button |
 
-Die mobile rechte Steuerfläche ist eine **Ein-Finger-Gestensteuerung**: Finger auf **GAS** halten, nach **WHEELIE** hochziehen (Gas bleibt gedrückt), wieder zurück zu **GAS** ziehen (Wheelie lösen) oder mit dem Finger zu **BREMSE** ziehen (Gas loslassen und bremsen). Erst wenn der Finger vom Bildschirm abgehoben wird, werden die Eingaben dieser Geste beendet. Gleichzeitiges Lenken mit einem zweiten Finger und separate Wheelie-/Bremsberührungen bleiben möglich. Pointer-Capture verhindert abgebrochene Wischgesten; Mehrfach-Touch und Tastatureingaben werden unabhängig zusammengeführt.
+Die mobile rechte Steuerfläche ist eine **Ein-Finger-Gestensteuerung**: Finger auf **GAS** halten, nach **WHEELIE** hochziehen (Gas bleibt gedrückt), wieder zurück zu **GAS** ziehen (Wheelie lösen) oder zu **BREMSE** ziehen (Gas loslassen und bremsen; weiter halten = rückwärts fahren). Die linke Steuerung besitzt nur noch zwei große Lenktasten. Die Bremse hat immer Vorrang vor Gas. Erst wenn der Finger vom Bildschirm abgehoben wird, werden die Eingaben dieser Geste beendet. Gleichzeitiges Lenken mit einem zweiten Finger und separate Wheelie-/Bremsberührungen bleiben möglich. Pointer-Capture verhindert abgebrochene Wischgesten; Mehrfach-Touch und Tastatureingaben werden unabhängig zusammengeführt.
 
 ## Spielwelt
 
@@ -50,7 +50,7 @@ Die mobile rechte Steuerfläche ist eine **Ein-Finger-Gestensteuerung**: Finger 
 - Instanced Trees: 600 auf Mobilgeräten, 1300 auf Desktop
 - E-Scooter mit Lenker, Rädern, Beleuchtung und Fahrer
 - Third-Person-Folgekamera, Bremsen, Rückwärtsfahren, Baumberührung und Wheelie
-- Mobile Renderauflösung begrenzt, Schatten auf Mobilgeräten deaktiviert
+- Mobile Renderauflösung auf 1,4–1,9 DPR erhöht, WebGL-Kantenglättung aktiviert, besser lesbare HUD-Schriften; Schatten auf Mobilgeräten weiterhin deaktiviert
 
 ## Challenges und Coins
 
@@ -80,7 +80,7 @@ GitHub Actions startet bei jedem PR auf `main` und jedem Push auf `main`: **Unit
 - Das Zuhause besitzt jetzt ein korrekt zur Hauptstraße ausgerichtetes Satteldach, einen markierten Eingang, überdachte Veranda, Fensterrahmen, Kamin, Pflanzbeete und Stufen. Die Garage erhält eine sichtbare Torfassade; weitere zufahrtnahe Wohnhäuser, Cafés und kleine Läden bilden Straßenzüge. Fremde Gebäude sind reine Kulisse **ohne Zutrittsmöglichkeit**.
 - **Gebäudekollisionen:** Scooter kann nicht mehr durch Häuser fahren – auch nicht mit hoher Geschwindigkeit. Die Grundrisse der zur Straße gedrehten Häuser sind in der Kollisionsberechnung angepasst. Eine kreisförmige Spieler-Kollisionshülle gleitet an rechteckigen Gebäudegrundrissen, Bänken und Laternen vorbei; Bewegung wird in kleine Schritte unterteilt, damit man mit Tempo nicht durch Wände tunnelt.
 - **Sitzbänke:** Fahr zur Bank, bremse ab und drücke **E** oder am Smartphone **HINSETZEN**. Die Spielfigur sitzt dann auf der Bank. **E/AUFSTEHEN** setzt die Fahrt fort. Sitzbänke sind ebenfalls Hindernisse.
-- **Unterbodenbeleuchtung:** In der Garage Neon aktivieren und die **Neon-Farbe** wählen. An der Unterseite des Scooters leuchten LED-Leisten; unter dem Fahrzeug erscheint ein weich auslaufender Lichtkegel auf dem Boden, ergänzt durch eine tatsächliche Punktlichtquelle mit physikalischer Lichtabnahme. Die Beleuchtung folgt dem Scooter und bleibt beim Wheelie auf der Fahrbahn.
+- **Unterbodenbeleuchtung:** In der Garage Neon aktivieren und Farbe wählen. LED-Leisten sitzen am Deck; ein weicher, auslaufender Halo erscheint auf der Straße. Eine **nach unten gerichtete Spotlichtquelle** beleuchtet nur Boden und niedrige Gegenstände unter dem Scooter. Die bisherige omnidirektionale Punktbeleuchtung (die auch den Fahrer und Oberseiten bestrahlte) wurde entfernt. 
 - Die Darstellung ist für Desktop und mobile Browser ausgelegt. Straßenlaternen nutzen auf mobilen Geräten überwiegend selbstleuchtende Materialien statt vieler teurer dynamischer Lichtquellen.
 
 ## Garage, Zuhause und Ich-Perspektive

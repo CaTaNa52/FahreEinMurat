@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { CHALLENGES, WORKSHOPS, SLALOM_CONES, SLALOM_FINISH, roadX, updateWheelie, createChallengeState, updateChallenges, failChallenge } from './gameplay.js';
 import { Scooter } from './Models.jsx';
 import { GroundUnderglow } from './Underglow.jsx';
+import { updateDriveSpeed } from './driving.js';
 import { City } from './City.jsx';
 import { BENCHES, CROSSROADS, OBSTACLES, resolveWorldMovement, closestBench } from './worldLayout.js';
 
@@ -223,11 +224,7 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, o
         onGameEvent({ type: 'respawn' });
       }
     } else if(!seatRef.current) {
-      if (c.forward) p.speed += 11.5 * dt;
-      if (c.back) p.speed -= 8 * dt;
-      if (!c.forward && !c.back) p.speed *= Math.exp(-1.7 * dt);
-      if (c.brake) p.speed *= Math.exp(-7 * dt);
-      p.speed = clamp(p.speed, -6, 23); if (Math.abs(p.speed) < .04) p.speed = 0;
+      p.speed = updateDriveSpeed(p.speed, c, dt);
       const steer = Number(c.left) - Number(c.right);
       p.yaw += steer * Math.min(1.7, .7 + Math.abs(p.speed) * .075) * dt * Math.sign(p.speed || 1) * (1 - p.pitch * .42);
       const target={
