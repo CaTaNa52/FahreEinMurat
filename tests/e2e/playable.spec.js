@@ -7,6 +7,8 @@ test('Start screen opens a rendered, playable 3D scene', async ({ page, isMobile
  await page.getByRole('button', { name: /JETZT FAHREN/ }).click();
  await expect(page.locator('canvas')).toBeVisible({ timeout: 25000 });
  await expect(page.getByTestId('speed')).toBeVisible();
+ await expect(page.getByTestId('coins')).toContainText('MURAT-COINS');
+ await expect(page.getByRole('button', { name: 'Wheelie halten' })).toBeVisible();
  if (isMobile) {
    const gas = page.getByRole('button', { name: 'Gas', exact: true });
    const rect = await gas.boundingBox();

@@ -23,3 +23,40 @@ body{position:fixed;inset:0;-webkit-touch-callout:none;-webkit-user-select:none}
 .startup-error p{max-width:550px;line-height:1.6;margin:0}
 .startup-error code{display:block;max-width:min(100%,650px);overflow-wrap:anywhere;background:#26352c;color:#d7ff9c;border-radius:12px;padding:14px}
 .startup-error button{border:0;background:#c8ff57;color:#102015;padding:14px 24px;border-radius:13px;font-weight:800}
+
+
+/* Timed challenges and local Murat-Coins economy */
+#top{flex-wrap:wrap;max-width:calc(100% - 220px)}
+.wallet{display:flex;align-items:center;background:#1a2416d9;backdrop-filter:blur(14px);border:1px solid #ffdf765d;color:#ffe492;border-radius:14px;padding:10px 13px;font-size:12px;font-weight:900;letter-spacing:.045em;white-space:nowrap;text-shadow:0 1px 7px #0009}
+.challenge-panel{position:absolute;top:110px;left:50%;transform:translateX(-50%);width:min(400px,calc(100vw - 32px));padding:15px 18px 16px;background:#0a201deb;box-shadow:0 12px 36px #0008;border:1px solid #bfff5999;border-radius:20px;text-align:center;backdrop-filter:blur(14px);pointer-events:none}
+.challenge-panel.failed,.challenge-panel.crash{border-color:#ff7272b0}
+.challenge-panel.won{border-color:#ffe78b}
+.challenge-name{color:#bfff70;font-weight:900;font-size:10px;letter-spacing:.18em;margin-bottom:5px}
+.challenge-title{font-weight:1000;font-size:19px;letter-spacing:.035em}
+.challenge-stat{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:10px 0}
+.challenge-stat strong{font-size:30px;color:#c8ff57;line-height:1}
+.challenge-stat span{font-size:12px;font-weight:850}
+.challenge-meter{height:8px;border-radius:20px;background:#ffffff26;overflow:hidden}
+.challenge-meter>div{height:100%;border-radius:20px;background:linear-gradient(90deg,#62edc0,#c8ff57);transition:width .12s linear}
+.challenge-help{font-size:11px;color:#d5e7df;line-height:1.35;margin-top:8px}
+@media(max-width:700px){
+  #top{max-width:calc(100% - 100px);align-items:flex-start;flex-direction:column;gap:5px}
+  .wallet{font-size:10px;padding:6px 8px}
+  .challenge-panel{top:91px;padding:9px 12px 10px;border-radius:14px;width:min(300px,calc(100vw - 20px))}
+  .challenge-title{font-size:14px}
+  .challenge-name{font-size:9px}
+  .challenge-stat{margin:5px 0}
+  .challenge-stat strong{font-size:23px}
+  .challenge-help{font-size:10px;margin-top:5px}
+}
+@media(max-height:470px) and (orientation:landscape){
+  .wallet{padding:5px 7px;font-size:9px}
+  .challenge-panel{top:11px;left:50%;width:min(270px,34vw);padding:7px 9px}
+  .challenge-name{margin:0}
+  .challenge-title{font-size:12px}
+  .challenge-stat{margin:3px 0}
+  .challenge-stat strong{font-size:18px}
+  .challenge-help{font-size:9px;line-height:1.15}
+}
+
+.wheelie-angle{font-size:11px;color:#93eeff;margin-top:6px;font-weight:750}.wheelie-angle strong{color:#fff}
