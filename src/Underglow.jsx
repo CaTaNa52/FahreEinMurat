@@ -3,6 +3,7 @@ import * as THREE from 'three';
 
 export function GroundUnderglow({ tint, forwardedRef, quality }) {
   const uniforms=useMemo(()=>({uTint:{value:new THREE.Color(tint)}}),[tint]);
+  const lightTarget=useMemo(()=>new THREE.Object3D(),[]);
   return <group ref={forwardedRef}>
     {/* Two smooth light pools and a broad falloff on the physical road surface.
         Transparent additive pixels disappear gradually rather than showing a
@@ -23,12 +24,14 @@ export function GroundUnderglow({ tint, forwardedRef, quality }) {
           gl_FragColor=vec4(uTint*1.12,alpha);
         }`}/>
     </mesh>
-    {/* Real dynamic light on MeshStandardMaterial asphalt, sidewalk and the
-        scooter frame; only one light on mobile to avoid too many GPU lights. */}
-    <pointLight position={[0,.72,-.12]} color={tint}
-      intensity={quality==='low'?6:12} distance={8.5} decay={2}/>
-    {quality==='high'&&<pointLight position={[0,.65,-.84]} color={tint}
-      intensity={3.2} distance={5.5} decay={2}/>}
+    {/* Spotlights shine ONLY down to the pavement. The former pointLights
+        emitted in every direction and incorrectly illuminated the rider,
+        upper scooter and buildings above the deck. The targets are local
+        children so the beams keep pointing down as the scooter moves. */}
+    <primitive object={lightTarget} position={[0,-.06,-.28]}/>
+    <spotLight position={[0,.43,-.28]} target={lightTarget}
+      angle={1.16} penumbra={.98} distance={2.8} decay={2}
+      color={tint} intensity={quality==='low'?20:29} castShadow={false}/>
   </group>;
 }
 

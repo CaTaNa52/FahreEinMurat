@@ -7,7 +7,7 @@ export const TUTORIAL_STEPS=[
   {id:'challenges',eyebrow:'DEIN ABENTEUER',title:'Auf der Karte warten Challenges 🏆',
     description:'Leuchtende Bodenflächen starten Aufgaben. Meistere Slalom und Wheelies oder suche den versteckten goldenen Schlüssel – ganz ohne Richtungshilfe. Jede erfolgreich wiederholte Challenge bringt Coins.'},
   {id:'controls',eyebrow:'BEREIT ZUM FAHREN',title:'So steuerst du deinen Scooter 🛴',
-    description:'Handy: GAS halten und mit demselben Finger zu WHEELIE wischen, mit dem anderen lenken. PC: WASD, Leertaste und Shift. Die Ansicht wechselst du über 1ST/3RD oder V. Viel Spaß!'}
+    description:'Handy: mit GAS vorwärtsfahren, links mit den zwei großen Pfeilen lenken. BREMSE gedrückt halten: zuerst stoppen, dann rückwärtsfahren. Vom GAS zum WHEELIE hochwischen. PC: WASD, Leertaste, Shift. Kamera mit 1ST/3RD oder V wechseln. Viel Spaß!'}
 ];
 export function hasSeenTutorial(storage){
   try{return storage?.getItem(TUTORIAL_KEY)==='1';}catch{return false;}

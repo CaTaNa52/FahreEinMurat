@@ -105,7 +105,7 @@ function RidePad({router}) {
     <button ref={el=>{buttons.current.wheelie=el;}} type="button" data-ride="wheelie"
       aria-label="Wheelie halten" className={'ctrl wheel ride-wheelie'+(active.wheelie?' held':'')}>WHEELIE ↑</button>
     <button ref={el=>{buttons.current.brake=el;}} type="button" data-ride="brake"
-      aria-label="Bremse" className={'ctrl secondary ride-brake'+(active.brake?' held':'')}>BREMSE</button>
+      aria-label="Bremse" className={'ctrl secondary ride-brake'+(active.brake?' held':'')}>BREMSE<span className="brake-caption">HALTEN: RÜCK ↩</span></button>
     <button ref={el=>{buttons.current.gas=el;}} type="button" data-ride="gas"
       aria-label="Gas" className={'ctrl primary ride-gas'+(active.gas?' held':'')}>GAS ⚡</button>
   </div>;
@@ -129,8 +129,13 @@ export default function App(){
   const [tutorialStep,setTutorialStep]=useState(null);
   const [quality,setQuality]=useState('high');
   const [kmh,setKmh]=useState(0);
+  const [reversing,setReversing]=useState(false);
   const speedRef=useRef(0);
-  const onSpeed=useCallback(speed=>{const value=Math.round(Math.abs(speed)*3.6);if(value!==speedRef.current){speedRef.current=value;setKmh(value);}},[]);
+  const onSpeed=useCallback(speed=>{
+    const value=Math.round(Math.abs(speed)*3.6);
+    if(value!==speedRef.current){speedRef.current=value;setKmh(value);}
+    setReversing(prev=>prev===(speed<-.10)?prev:speed<-.10);
+  },[]);
   const onGameEvent=useCallback(event=>{
     if(event.type==='near'){
       setNearby(prev=>prev===event.place?prev:event.place);
@@ -209,7 +214,7 @@ export default function App(){
     {started&&<div className="scene-host"><SceneError><Suspense fallback={<div className="loading">3D-WELT WIRD GELADEN …</div>}><GameCanvas controls={controls} quality={quality} onSpeed={onSpeed} onGameEvent={onGameEvent} cosmetics={profile} view={view} paused={!!studio||tutorialStep!==null} tutorialStep={tutorialStep}/></Suspense></SceneError></div>}
     {started&&<div id="hud">
       <div id="top"><div className="brand">FAHRE EIN <em>MURAT.</em></div><div className="pill">🌲 FOREST FREERIDE</div><div className="wallet" data-testid="coins">🪙 {profile.coins.toLocaleString('de-DE')} MURAT-COINS</div></div>
-      <div className="speed"><strong data-testid="speed">{kmh}</strong> <span>KM/H</span><small>● FREERIDE + CHALLENGES</small></div>
+      <div className="speed"><strong data-testid="speed">{kmh}</strong> <span>KM/H</span><small>{reversing?'↩ RÜCKWÄRTS':'● FREERIDE + CHALLENGES'}</small></div>
       <div className="tip">Fahre in leuchtende Felder für Challenges. Wheelie: Leertaste gedrückt halten, rechtzeitig loslassen oder bremsen!</div>
       {challenge && <div className={`challenge-panel ${challenge.type}`} role="status" data-testid="challenge">
         {challenge.id && <div className="challenge-name">{CHALLENGES[challenge.id]?.name}</div>}
@@ -229,8 +234,10 @@ export default function App(){
           <div className="challenge-help">Verlasse das leuchtende Feld und fahre erneut hinein, um es wieder zu versuchen.</div>
         </>}
       </div>}
-      <div className="controls left"><div className="pad"><span></span><Control router={router} action="forward" label="Vorwärts">↑</Control><span></span>
-      <Control router={router} action="left" label="Links">←</Control><Control router={router} action="back" label="Rückwärts">↓</Control><Control router={router} action="right" label="Rechts">→</Control></div></div>
+      <div className="controls left"><div className="steering-pad" data-testid="steering-pad">
+        <Control router={router} action="left" label="Links" className="steer-control">←</Control>
+        <Control router={router} action="right" label="Rechts" className="steer-control">→</Control>
+      </div></div>
       <div className="controls right"><button className="ctrl reset" aria-label="Zurücksetzen" onClick={()=>{router.clearAll();controls.current.reset=true;}}>↺</button>
       <RidePad router={router}/></div>
       <div className="world-actions">
@@ -261,7 +268,7 @@ export default function App(){
       <p>Dein Scooter. Deine Straße. Dein Wald. Meistere drei Challenges, suche den goldenen Schlüssel und gestalte Fahrer und Scooter.</p>
       <button className="start" onClick={begin}>JETZT FAHREN →</button>
       <p style={{fontSize:12,opacity:.7}}>PC: WASD / Pfeiltasten · Handy: Gas gedrückt halten und nach oben zum Wheelie wischen.</p>
-      <p style={{fontSize:11,opacity:.5}}>REACT THREE FIBER · VERSION 0.7</p>
+      <p style={{fontSize:11,opacity:.5}}>REACT THREE FIBER · VERSION 0.8</p>
     </div></div>}
     {unsupported&&<div className="startup-error" role="alert"><h2>WebGL ist in dieser Vorschau nicht verfügbar.</h2><p>Öffne im Codespace den Port 5173 mit „Open in Browser“ direkt in Safari, Chrome oder Edge.</p><button onClick={()=>location.reload()}>Erneut versuchen</button></div>}
   </>;
