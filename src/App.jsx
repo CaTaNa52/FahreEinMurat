@@ -71,7 +71,7 @@ export default function App(){
     {started&&<div className="scene-host"><SceneError><Suspense fallback={<div className="loading">3D-WELT WIRD GELADEN …</div>}><GameCanvas controls={controls} quality={quality} onSpeed={onSpeed} onGameEvent={onGameEvent}/></Suspense></SceneError></div>}
     {started&&<div id="hud">
       <div id="top"><div className="brand">FAHRE EIN <em>MURAT.</em></div><div className="pill">🌲 FOREST FREERIDE</div><div className="wallet" data-testid="coins">🪙 {wallet.coins.toLocaleString('de-DE')} MURAT-COINS</div></div>
-      <div className="speed"><strong data-testid="speed">{kmh}</strong> <span>KM/H</span><small>{controls.current.wheelie?'⚡ WHEELIE':'● FREERIDE'}</small></div>
+      <div className="speed"><strong data-testid="speed">{kmh}</strong> <span>KM/H</span><small>● FREERIDE + CHALLENGES</small></div>
       <div className="tip">Fahre in leuchtende Felder für Challenges. Wheelie: Leertaste gedrückt halten, rechtzeitig loslassen oder bremsen!</div>
       {challenge && <div className={`challenge-panel ${challenge.type}`} role="status" data-testid="challenge">
         {challenge.id && <div className="challenge-name">{CHALLENGES[challenge.id]?.name}</div>}
@@ -84,6 +84,7 @@ export default function App(){
           <div className="challenge-help">{challenge.id==='slalom'?
             'Fahre abwechselnd rechts und links an den Hütchen vorbei. Folge den grünen Ringen bis ins Ziel.':
             'Halte Wheelie zum Anheben. Lass los, um zu balancieren. Zu hoher Winkel = Sturz!'} </div>
+          {challenge.id==='wheelie'&&<div className="wheelie-angle">Radwinkel: <strong>{Math.round((challenge.pitch||0)*180/Math.PI)}°</strong> · Balance: 13–40° · Sturz: 50°</div>}
         </> : <><div className="challenge-title">{challenge.type==='won'?'🏆 GESCHAFFT!':challenge.type==='failed'?'✖ CHALLENGE GESCHEITERT':'💥 STURZ!'}</div>
           <div className="challenge-help">{challenge.type==='won'?(challenge.reward>0?`+${challenge.reward.toLocaleString('de-DE')} Murat-Coins!`:'Bereits belohnt – super gefahren!'):(challenge.reason||'Versuch es erneut.')}</div>
           <div className="challenge-help">Verlasse das leuchtende Feld und fahre erneut hinein, um es wieder zu versuchen.</div>
