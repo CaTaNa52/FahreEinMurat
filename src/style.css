@@ -58,3 +58,5 @@ body{position:fixed;inset:0;-webkit-touch-callout:none;-webkit-user-select:none}
   .challenge-stat strong{font-size:18px}
   .challenge-help{font-size:9px;line-height:1.15}
 }
+
+.wheelie-angle{font-size:11px;color:#93eeff;margin-top:6px;font-weight:750}.wheelie-angle strong{color:#fff}
