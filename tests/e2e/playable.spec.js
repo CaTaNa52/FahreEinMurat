@@ -6,6 +6,8 @@ test('Start screen opens a rendered, playable 3D scene', async ({ page, isMobile
  await expect(page.getByRole('button', { name: /JETZT FAHREN/ })).toBeVisible();
  await page.getByRole('button', { name: /JETZT FAHREN/ }).click();
  await expect(page.locator('canvas')).toBeVisible({ timeout: 25000 });
+  const intro=page.getByRole('button',{name:'Einführung überspringen'});
+  if(await intro.isVisible())await intro.click();
  await expect(page.getByTestId('speed')).toBeVisible();
  await expect(page.getByTestId('coins')).toContainText('MURAT-COINS');
  await expect(page.getByRole('button', { name: 'Wheelie halten' })).toBeVisible();
