@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { roadX, WORKSHOPS, CHALLENGES, SLALOM_CONES, TREASURE_SPAWNS } from '../src/gameplay.js';
-import { CROSSROADS, BUILDINGS, BENCHES, LAMPS, SIGNALS, OBSTACLES,
+import { CROSSROADS, BUILDINGS, DISTRICT_BUILDINGS, ALL_BUILDINGS, BENCHES, LAMPS, SIGNALS, OBSTACLES,
   intersectsBuilding, resolveWorldMovement, closestBench } from '../src/worldLayout.js';
 
 test('street system includes multiple real traversable cross roads, signals and lamps',()=>{
@@ -56,4 +56,54 @@ test('all benches have a physical seat and are discoverable within interaction r
     assert.equal(near.id,bench.id);
   }
   assert.equal(closestBench(1000,1000),null);
+});
+
+test('side roads have neighbourhood buildings, working lights and sitting places',()=>{
+  assert.equal(DISTRICT_BUILDINGS.length,CROSSROADS.length*4);
+  assert.equal(ALL_BUILDINGS.length,BUILDINGS.length+DISTRICT_BUILDINGS.length);
+  assert.ok(BENCHES.length>=CROSSROADS.length+6);
+  assert.ok(LAMPS.length>=CROSSROADS.length*2+18);
+  for(const street of CROSSROADS){
+    const houses=DISTRICT_BUILDINGS.filter(b=>Math.abs(b.z-street.z)<20);
+    assert.equal(houses.length,4);
+    for(const b of houses){
+      assert.ok(Math.abs(b.z-street.z)>street.width/2+b.depth/2,
+        b.id+' must remain outside asphalt');
+      assert.ok(OBSTACLES.some(c=>c.id===b.id),'Visible building has a collider');
+    }
+    const travel=resolveWorldMovement(
+      {x:street.x-street.length/2+9,z:street.z},
+      {x:street.x+street.length/2-9,z:street.z},OBSTACLES,.72);
+    assert.equal(travel.blocked,false,'Cross street is actually rideable');
+    assert.ok(travel.x>street.x+street.length/2-12);
+  }
+});
+
+test('rotated homes retain correctly oriented walls and block all sides',()=>{
+  const home=OBSTACLES.find(o=>o.id==='home');
+  assert.equal(home.w,8.2);assert.equal(home.d,9.3);
+  for(const side of [-1,1]){
+    const x=home.x+side*(home.w/2+4.2);
+    const target={x:home.x-side*2,z:home.z};
+    const result=resolveWorldMovement({x,z:home.z},target);
+    assert.equal(result.blocked,true,'Cannot pass through facade');
+    assert.ok(!intersectsBuilding(result.x,result.z,home,.72));
+  }
+  for(const building of BUILDINGS.filter(b=>b.kind==='house')){
+    const physical=OBSTACLES.find(o=>o.id===building.id);
+    assert.equal(physical.w,building.depth);
+    assert.equal(physical.d,building.width);
+  }
+});
+
+test('large high-speed jumps cannot tunnel through new district houses or props',()=>{
+  const colliders=[...DISTRICT_BUILDINGS.slice(0,4).map(b=>OBSTACLES.find(o=>o.id===b.id)),
+    OBSTACLES.find(o=>o.id==='garage')];
+  for(const c of colliders){
+    const before={x:c.x-c.w/2-22,z:c.z};
+    const after={x:c.x+c.w/2+22,z:c.z};
+    const result=resolveWorldMovement(before,after,OBSTACLES,.72);
+    assert.equal(result.blocked,true,c.id);
+    assert.ok(result.x<c.x-c.w/2,'Swept collision stops before wall');
+  }
 });

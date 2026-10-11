@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber';
 import { useRef, useState } from 'react';
 import { Scooter, Rider } from './Models.jsx';
+import { GroundUnderglow } from './Underglow.jsx';
 import { PALETTE, MODEL_OPTIONS, TIRES_OPTIONS, upgradeCost, upgradeId, normalizeProfile } from './customization.js';
 
 function Studio({room,profile,angle}) {
@@ -17,9 +18,11 @@ function Studio({room,profile,angle}) {
       <meshStandardMaterial color="#43504a" roughness={.89}/>
     </mesh>
     <gridHelper args={[11,11,'#9db9a4','#627b6f']} position={[0,-.07,0]}/>
-    {room==='garage'&&profile.garage.underglow&&<pointLight position={[0,.55,0]}
-      color={profile.garage.glowColor??'#55ffcf'} intensity={6} distance={5} decay={2}/>} 
-    <group rotation={[0,angle,0]} position={[0,room === 'garage' ? .12 : 0,0]}>
+    {room==='garage'&&profile.garage.underglow&&
+      <group position={[0,-.09,0]}>
+        <GroundUnderglow tint={profile.garage.glowColor??'#55ffcf'} quality="low"/>
+      </group>}
+    <group rotation={[0,angle,0]} position={[0,room === 'garage' ? .37 : 0,0]}>
       {room==='garage'
         ? <group scale={1.25}><Scooter options={profile.garage} showRider={false}/></group>
         : <Rider options={profile.rider}/>}

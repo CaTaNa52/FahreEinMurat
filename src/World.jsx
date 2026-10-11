@@ -3,6 +3,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { CHALLENGES, WORKSHOPS, SLALOM_CONES, SLALOM_FINISH, roadX, updateWheelie, createChallengeState, updateChallenges, failChallenge } from './gameplay.js';
 import { Scooter } from './Models.jsx';
+import { GroundUnderglow } from './Underglow.jsx';
 import { City } from './City.jsx';
 import { BENCHES, CROSSROADS, OBSTACLES, resolveWorldMovement, closestBench } from './worldLayout.js';
 
@@ -180,27 +181,8 @@ function ChallengeCourse({treasure}) {
 // Visual spill stays horizontal on the asphalt even while doing a wheelie.
 // A real point light illuminates nearby StandardMaterials, a radial shader gives
 // a broad soft bloom without expensive postprocessing on phones.
-function GroundUnderglow({ tint, forwardedRef }) {
-  const uniforms=useMemo(()=>({uTint:{value:new THREE.Color(tint)}}),[tint]);
-  return <group ref={forwardedRef} renderOrder={3}>
-    <mesh position={[0,.006,-.32]} rotation={[-Math.PI/2,0,0]} renderOrder={3}>
-      <planeGeometry args={[5.6,6.8]}/>
-      <shaderMaterial key={tint} transparent depthWrite={false} depthTest
-        blending={THREE.AdditiveBlending} toneMapped={false} uniforms={uniforms}
-        vertexShader={`varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`}
-        fragmentShader={`uniform vec3 uTint; varying vec2 vUv; void main(){
-          vec2 p=(vUv-vec2(.5))*vec2(1.4,1.2);
-          float falloff=exp(-dot(p,p)*13.0);
-          float inner=exp(-dot(p,p)*35.0);
-          gl_FragColor=vec4(uTint,falloff*.46+inner*.18);
-        }`}/>
-    </mesh>
-    <pointLight position={[0,.62,-.28]} color={tint} intensity={8}
-      distance={6} decay={2}/>
-  </group>;
-}
 
-function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, onBenchChange }) {
+function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, onBenchChange, quality }) {
   const group = useRef(), scooter = useRef(), rider = useRef(), glow = useRef();
   const { camera } = useThree();
   const player = useRef({ x: roadX(0), z: 0, yaw: 0, speed: 0, pitch: 0, pitchVel: 0, lean: 0, timer: 0, fallen: false, fallTime: 0, respawnZ: 0 });
@@ -323,7 +305,7 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, o
       </group>
     </group>
     {cosmetics.garage.underglow&&<GroundUnderglow forwardedRef={glow}
-      tint={cosmetics.garage.glowColor??'#55ffcf'}/>}
+      tint={cosmetics.garage.glowColor??'#55ffcf'} quality={quality}/>}
   </>;
 }
 // Guided camera introduction: free-look at actual buildings and challenge zones
@@ -364,7 +346,7 @@ export default function World({ input, quality, onSpeed, onGameEvent, cosmetics,
     <Road/><City quality={quality} seatedBench={seatedBench} rider={cosmetics.rider}/>
     <Forest trees={trees}/><ChallengeCourse treasure={treasure}/>
     <Driver input={input} trees={trees} onSpeed={onSpeed} onGameEvent={handleEvent}
-      cosmetics={cosmetics} view={view} paused={paused} onBenchChange={setSeatedBench}/>
+      cosmetics={cosmetics} view={view} paused={paused} onBenchChange={setSeatedBench} quality={quality}/>
     <TourCamera step={tutorialStep}/>
   </>;
 }

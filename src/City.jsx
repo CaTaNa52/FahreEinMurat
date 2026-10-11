@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { WORKSHOPS } from './gameplay.js';
-import { CROSSROADS, BUILDINGS, BENCHES, LAMPS, SIGNALS } from './worldLayout.js';
+import { CROSSROADS, ALL_BUILDINGS, BENCHES, LAMPS, SIGNALS } from './worldLayout.js';
 import { DEFAULT_RIDER } from './customization.js';
 
 const asphalt='#4b5456';
@@ -29,7 +29,9 @@ function BuildingLabel({name,width=4.6,color='#dbffbb'}){
 }
 function House({item,isHome=false}){
   const width=item.width??9.3, depth=item.depth??8.2;
-  const color=item.paint??'#e4d2ae',eave=4.5,rise=2.05;
+  const color=item.paint??'#e4d2ae',eave=4.5,rise=isHome?2.6:2.05;
+  // Door and porch face the road, not into the garden behind the house.
+  const yaw=isHome?-Math.PI/2:item.side===-1?-Math.PI/2:item.side===1?Math.PI/2:(item.facadeYaw??0);
   const panelLength=Math.hypot(width/2+.55,rise);
   const slope=Math.atan2(rise,width/2+.55);
   const gable=useMemo(()=>{
@@ -37,7 +39,7 @@ function House({item,isHome=false}){
     shape.moveTo(-width/2,0);shape.lineTo(0,rise);shape.lineTo(width/2,0);shape.closePath();
     return shape;
   },[width,rise]);
-  return <group position={[item.x,0,item.z]}>
+  return <group position={[item.x,0,item.z]} rotation={[0,yaw,0]}>
     <Cuboid at={[0,2.25,0]} size={[width,4.5,depth]} color={color} castShadow/>
     {[-1,1].map(side=><group key={'roof'+side}>
       <mesh position={[side*(width/4+.135),eave+rise/2,0]} rotation={[0,0,-side*slope]} castShadow receiveShadow>
@@ -66,7 +68,35 @@ function House({item,isHome=false}){
     </group>)}
     <Cuboid at={[0,.15,-depth/2-.75]} size={[2.8,.3,1.5]} color="#b8b2a6"/>
     <Cuboid at={[0,.07,-depth/2-1.65]} size={[3.3,.14,1]} color="#a6a197"/>
-    {isHome&&<group position={[0,3.84,-depth/2-.2]}><BuildingLabel name="ZUHAUSE" color="#d0edb0"/></group>}
+    {isHome&&<>
+      {/* Recognizable family-house facade: warm eaves, proper porch, steps,
+          frosted upper window, flower beds and a clear front entry. */}
+      <Cuboid at={[0,4.62,-depth/2-.58]} size={[3.7,.23,1.65]} color="#6f4437" castShadow/>
+      {[-1,1].map(side=><group key={'porch-'+side}>
+        <Cuboid at={[side*1.68,2.26,-depth/2-1.15]} size={[.18,4.4,.18]} color="#f5e9d3" castShadow/>
+        <Cuboid at={[side*1.68,.46,-depth/2-1.15]} size={[.35,.92,.35]} color="#c3b7a3"/>
+        <Cuboid at={[side*2.65,.22,-depth/2-1.4]} size={[1.14,.34,1.3]} color="#7c8c70"/>
+        <mesh position={[side*2.65,.58,-depth/2-1.4]}>
+          <sphereGeometry args={[.62,7,6]}/>
+          <meshStandardMaterial color="#3d8155" roughness={1}/>
+        </mesh>
+        <mesh position={[side*1.95,3.58,-depth/2-.2]}>
+          <boxGeometry args={[.18,.34,.22]}/>
+          <meshStandardMaterial color="#f3d9a1" emissive="#ffa84d" emissiveIntensity={.7}/>
+        </mesh>
+      </group>)}
+      <Cuboid at={[0,.09,-depth/2-3.15]} size={[2.6,.16,2.55]} color="#b8b8ab"/>
+      <Cuboid at={[0,.25,-depth/2-1.96]} size={[2.55,.18,.83]} color="#d2c6b1"/>
+      <Cuboid at={[0,2.85,-depth/2-.13]} size={[.29,.38,.17]} color="#e9d9ba"/>
+      <mesh position={[0,eave+rise*.42,-depth/2-.085]}>
+        <circleGeometry args={[.32,18]}/>
+        <meshStandardMaterial color="#d7dfd0" roughness={.37} side={THREE.DoubleSide}/>
+      </mesh>
+      <Cuboid at={[0,eave+rise+.05,0]} size={[.18,.14,depth+1.4]} color="#603d35"/>
+      <group position={[0,3.98,-depth/2-.75]}>
+        <BuildingLabel name="ZUHAUSE" color="#d0edb0"/>
+      </group>
+    </>}
   </group>;
 }
 function Garage(){
@@ -92,7 +122,7 @@ function Garage(){
 function ShopsAndFlats({item}){
   const floors=item.kind==='flats'?3:1,height=item.kind==='flats'?9.5:4.8;
   const front=-item.depth/2-.08;
-  return <group position={[item.x,0,item.z]}>
+  return <group position={[item.x,0,item.z]} rotation={[0,item.facadeYaw??0,0]}>
     <Cuboid at={[0,height/2,0]} size={[item.width,height,item.depth]} color={item.paint} castShadow/>
     <Cuboid at={[0,height+.18,0]} size={[item.width+.7,.38,item.depth+.7]} color="#474c51" castShadow/>
     {Array.from({length:floors},(_,floor)=>[-1,0,1].map(col=>
@@ -220,7 +250,7 @@ export function City({quality='low',seatedBench=null,rider}){
     {LAMPS.map((lamp,i)=><StreetLamp key={lamp.id} data={lamp} lighted={quality==='high'&&i%5===0}/>)}
     <Garage/>
     <House item={{...WORKSHOPS.home,width:9.3,depth:8.2,paint:'#eddbbb'}} isHome/>
-    {BUILDINGS.map(item=>item.kind==='house'
+    {ALL_BUILDINGS.map(item=>item.kind==='house'
       ? <House key={item.id} item={item}/>
       : <ShopsAndFlats key={item.id} item={item}/>)}
     {BENCHES.map(b=><Bench key={b.id} bench={b}/>)}

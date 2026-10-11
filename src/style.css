@@ -204,3 +204,48 @@ body{position:fixed;inset:0;-webkit-touch-callout:none;-webkit-user-select:none}
 @media(max-height:470px) and (orientation:landscape){
   .bench-entry{bottom:114px;left:auto;right:8px;transform:none}
 }
+
+/* Installable PWA experience: disable system text selection and callouts without
+   blocking scrolling in settings/tutorial panels. Native keyboard navigation stays. */
+html,body,#root,#hud,.overlay,.tour-overlay,.customizer-layer,.scene-host{
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  -webkit-tap-highlight-color:transparent;overscroll-behavior:none;
+}
+img{user-select:none;-webkit-user-drag:none;pointer-events:none}
+button,a{-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+canvas{touch-action:none;user-select:none;-webkit-user-select:none}
+button:focus-visible{outline:3px solid #d0ff65;outline-offset:3px}
+.pwa-prompt{position:fixed;z-index:120;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);
+ width:min(540px,calc(100vw - 24px));border-radius:21px;border:1px solid #aaff9a83;
+ background:#0b241eeF;box-shadow:0 18px 55px #000b;backdrop-filter:blur(20px);
+ display:flex;gap:13px;padding:18px 42px 18px 16px;color:#f3fff2;pointer-events:auto}
+.pwa-logo{width:68px;height:68px;flex-shrink:0;border-radius:14px;overflow:hidden;background:#142b23;border:1px solid #baff8a45}
+.pwa-logo img{width:100%;height:100%;object-fit:cover}
+.pwa-body{min-width:0;flex:1}
+.pwa-kicker{font-size:10px;color:#ccff7a;font-weight:900;letter-spacing:.17em;margin-bottom:4px}
+.pwa-body strong{font-size:17px;line-height:1.2}
+.pwa-body p{font-size:12px;line-height:1.5;color:#d1e3da;margin:6px 0 10px}
+.pwa-body small{display:block;margin-top:9px;line-height:1.5;color:#d9ecdb}
+.pwa-buttons{display:flex;gap:8px;flex-wrap:wrap}
+.pwa-buttons button{border-radius:12px;padding:11px 13px;font-size:11px;font-weight:900;cursor:pointer;white-space:nowrap}
+.pwa-primary{background:#c8ff57;color:#102015;border:0}
+.pwa-later{background:#263b34;color:#e1fae8;border:1px solid #cbffba66}
+.pwa-close{position:absolute;top:9px;right:9px;border:0;background:#365044c4;color:#fff;border-radius:10px;cursor:pointer;font-size:13px;padding:8px}
+.pwa-help{background:#1e4038;border:1px solid #b9edb755;color:#edffed;font-size:12px;line-height:1.55;padding:10px 11px;border-radius:10px;margin:9px 0}
+.pwa-fab{position:fixed;z-index:24;top:calc(12px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+ border:1px solid #b9f8898c;border-radius:12px;background:#142b23ed;color:#dfff9d;
+ font-size:11px;font-weight:900;padding:7px 10px;cursor:pointer;pointer-events:auto;
+ box-shadow:0 6px 22px #0006}
+@media(max-width:700px){
+ .pwa-prompt{bottom:calc(8px + env(safe-area-inset-bottom));padding:13px 32px 13px 10px;gap:10px;border-radius:16px}
+ .pwa-logo{width:47px;height:47px;border-radius:10px}
+ .pwa-body strong{font-size:14px}
+ .pwa-body p{font-size:11px}
+ .pwa-buttons button{padding:10px 9px;font-size:10px}
+ .pwa-fab{top:calc(6px + env(safe-area-inset-top));bottom:auto;left:50%;font-size:10px;padding:6px 8px}
+}
+@media(max-height:470px) and (orientation:landscape){
+ .pwa-prompt{bottom:4px;max-height:calc(100dvh - 8px);overflow:auto;width:min(570px,68vw);padding:9px 32px 9px 12px}
+ .pwa-logo{width:44px;height:44px}
+ .pwa-body p{margin:2px 0 6px}
+}
