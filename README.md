@@ -76,9 +76,9 @@ GitHub Actions startet bei jedem PR auf `main` und jedem Push auf `main`: **Unit
 
 ## Straßen, Häuser, Ampeln und Sitzbänke
 
-- Mehrere echte Seitenstraßen/Kreuzungen verbinden sich mit der Hauptstraße. Kreuzungen besitzen markierte Übergänge, Ampeln mit wechselnden Lichtphasen und Straßenlaternen.
-- Das Zuhause hat nun ein zweiflügeliges Satteldach, Fensterrahmen, eine Eingangstür, Stufen und Pflanzen. Die Garage erhält eine sichtbare Torfassade; weitere zufahrtnahe Wohnhäuser, Cafés und kleine Läden bilden Straßenzüge. Fremde Gebäude sind reine Kulisse **ohne Zutrittsmöglichkeit**.
-- **Gebäudekollisionen:** Scooter kann nicht mehr durch Häuser fahren. Eine kreisförmige Spieler-Kollisionshülle gleitet an rechteckigen Gebäudegrundrissen, Bänken und Laternen vorbei; Bewegung wird in kleine Schritte unterteilt, damit man mit Tempo nicht durch Wände tunnelt.
+- Vier befahrbare, breit ausgebaute Seitenstraßen/Kreuzungen verbinden sich mit der Hauptstraße. Zusätzlich stehen **16 Wohn- und Geschäftsgebäude entlang der Nebenstraßen**, mit weiteren Laternen und Sitzbänken an den Querverbindungen. Ampeln wechseln ihre Lichtphasen; die Gebäude außerhalb von Garage und Zuhause sind reine Kulisse.
+- Das Zuhause besitzt jetzt ein korrekt zur Hauptstraße ausgerichtetes Satteldach, einen markierten Eingang, überdachte Veranda, Fensterrahmen, Kamin, Pflanzbeete und Stufen. Die Garage erhält eine sichtbare Torfassade; weitere zufahrtnahe Wohnhäuser, Cafés und kleine Läden bilden Straßenzüge. Fremde Gebäude sind reine Kulisse **ohne Zutrittsmöglichkeit**.
+- **Gebäudekollisionen:** Scooter kann nicht mehr durch Häuser fahren – auch nicht mit hoher Geschwindigkeit. Die Grundrisse der zur Straße gedrehten Häuser sind in der Kollisionsberechnung angepasst. Eine kreisförmige Spieler-Kollisionshülle gleitet an rechteckigen Gebäudegrundrissen, Bänken und Laternen vorbei; Bewegung wird in kleine Schritte unterteilt, damit man mit Tempo nicht durch Wände tunnelt.
 - **Sitzbänke:** Fahr zur Bank, bremse ab und drücke **E** oder am Smartphone **HINSETZEN**. Die Spielfigur sitzt dann auf der Bank. **E/AUFSTEHEN** setzt die Fahrt fort. Sitzbänke sind ebenfalls Hindernisse.
 - **Unterbodenbeleuchtung:** In der Garage Neon aktivieren und die **Neon-Farbe** wählen. An der Unterseite des Scooters leuchten LED-Leisten; unter dem Fahrzeug erscheint ein weich auslaufender Lichtkegel auf dem Boden, ergänzt durch eine tatsächliche Punktlichtquelle mit physikalischer Lichtabnahme. Die Beleuchtung folgt dem Scooter und bleibt beim Wheelie auf der Fahrbahn.
 - Die Darstellung ist für Desktop und mobile Browser ausgelegt. Straßenlaternen nutzen auf mobilen Geräten überwiegend selbstleuchtende Materialien statt vieler teurer dynamischer Lichtquellen.
@@ -91,6 +91,16 @@ GitHub Actions startet bei jedem PR auf `main` und jedem Push auf `main`: **Unit
 - **Kameramodus:** V auf Tastatur oder Schaltfläche **👁️ 1ST / 3RD** auf Touchscreen. Wechselt zwischen First-Person und Verfolgerkamera.
 - Coins, freigeschaltete Extras und Farben werden lokal im Browser gespeichert (kein Login, Backend oder Supabase).
 - Die Scooterphysik ist ein anpassbares Arcade-Physikmodell, kein vollständiger Rigid-Body-Simulator.
+
+## Als PWA installieren (Android, iPhone und Desktop)
+
+Die Spielwelt ist als **Progressive Web App** installierbar. Ein Manifest, App-Icons (192/512 px, Apple Touch Icon und maskierbares Android-Icon), `display: standalone`, Viewport-Safe-Areas und ein eigener Service Worker gehören dazu. Nach dem ersten vollständigen Laden werden die gebauten JavaScript-/CSS-Dateien inklusive aller Lazy-Chunks in einem versionsabhängigen Offline-Cache gespeichert. Das Spiel kann anschließend auch ohne Internet gestartet werden, sofern der Browser die Offline-Speicherung erlaubt.
+
+**Wichtig: Automatische Installation beim bloßen Öffnen eines Links ist nicht erlaubt.** Browser/OS verlangen immer eine aktive Zustimmung. Darum wird beim ersten Aufruf sofort ein Installationsangebot eingeblendet. **Android/Chrome:** „APP HINZUFÜGEN“ und native Installation bestätigen; erscheint noch kein nativer Dialog, Browsermenü „App installieren“ wählen. **iPhone/Safari:** Teilen → „Zum Home-Bildschirm“ → „Hinzufügen“. Der Hinweis ist überspringbar und kann über **⬇ APP** erneut geöffnet werden. Beim Spielen verschwindet das offene Popup, damit es Gas/Bremse nicht blockiert.
+
+Nach der Installation öffnet sich die App ohne normale Browser-Adressleiste und behält ihre bisherigen lokalen Daten (wenn unter demselben Browser-/Origin-Speicher). Textmarkierung, Bildziehen, langes iOS-Callout und Overscroll sind in der Spielansicht unterdrückt; Menüs und Konfiguratoren bleiben scrollbar, Tastaturfokus bleibt erhalten.
+
+**Entwicklung in Codespaces:** PWA-Service-Worker braucht HTTPS oder localhost. Die Codespaces-Port-URL muss direkt im Browser geöffnet werden. Der Vite-Devmodus unterstützt die Web-App-Funktionen, die vollständige gebündelte Offline-Version entsteht beim `npm run build` und kann mit `npm run preview` geprüft werden. Für eine öffentlich installierbare URL später über HTTPS (z. B. Vercel) deployen.
 
 ## Testen
 
@@ -113,6 +123,9 @@ src/
   main.jsx          React-Einstieg
   App.jsx           Startbildschirm, HUD, mobile Steuerung
   GameCanvas.jsx    React Three Fiber Canvas
+  InstallPrompt.jsx Browser-Installationsdialog / iOS-Hilfe
+  pwa.js            Service-Worker-Registrierung und Plattformerkennung
+  Underglow.jsx     Dynamische Neon-Beleuchtung
   World.jsx         3D-Welt, Gebäude, Suche, Fahrsimulation
   Models.jsx        Scooter- und Fahrermodell samt Kosmetik
   Customizer.jsx    3D-Konfigurator mit drehbarer Vorschau

@@ -23,11 +23,40 @@ export const BUILDINGS = [
   width:b.kind==='flats'?11:b.kind==='shop'?10:9,
   depth:b.kind==='flats'?9:b.kind==='shop'?9:8}));
 
-export const BENCHES = [-395,-205,-93,48,200,350].map((z,i)=>({
-  id:'bench-'+i,x:roadX(z)+(i%2===0?12.5:-12.5),z,side:i%2===0?1:-1
-}));
-export const LAMPS = [-430,-385,-340,-295,-235,-195,-145,-95,-42,4,55,95,150,210,265,320,380,420]
-  .map((z,i)=>({id:'lamp-'+i,x:roadX(z)+(i%2?8:-8),z}));
+// Residential and small-business plots along the transverse streets.
+ // They make intersections lead to actual neighbourhoods instead of empty asphalt.
+export const DISTRICT_BUILDINGS = CROSSROADS.flatMap((cross,index)=>
+  [-1,1].flatMap(direction=>[-1,1].map(edge=>{
+    const x=cross.x+direction*(cross.length*.29);
+    const z=cross.z+edge*17;
+    const kind=index%2===0&&direction===edge?'shop':'house';
+    return {id:`district-${index}-${direction}-${edge}`,x,z,side:0,kind,
+      width:kind==='shop'?10:9,depth:kind==='shop'?9:8,
+      paint:['#d2c3a9','#bd9b83','#b5b8af','#b3a7bc'][index],
+      label:kind==='shop'?'LADEN':'WOHNHAUS',
+      facadeYaw:edge===1?0:Math.PI};
+  }))
+);
+export const ALL_BUILDINGS = [...BUILDINGS,...DISTRICT_BUILDINGS];
+
+export const BENCHES = [
+  ...[-395,-205,-93,48,200,350].map((z,i)=>({
+    id:'bench-'+i,x:roadX(z)+(i%2===0?12.5:-12.5),z,side:i%2===0?1:-1
+  })),
+  ...CROSSROADS.map((road,i)=>({
+    id:'district-bench-'+i,
+    x:road.x+(i%2===0?1:-1)*road.length*.16,
+    z:road.z+(i%2===0?11:-11),
+    side:i%2===0?1:-1
+  }))
+];
+export const LAMPS = [
+  ...[-430,-385,-340,-295,-235,-195,-145,-95,-42,4,55,95,150,210,265,320,380,420]
+    .map((z,i)=>({id:'lamp-'+i,x:roadX(z)+(i%2?8:-8),z})),
+  ...CROSSROADS.flatMap((road,i)=>[-1,1].map((side)=>({
+    id:'junction-lamp-'+i+'-'+side,x:road.x+side*road.length*.2,z:road.z+(side*8.5)
+  })))
+];
 export const SIGNALS = CROSSROADS.flatMap(j=>[-1,1].map((side)=>({
   id:j.id+'-light-'+side,x:j.x+side*7.9,z:j.z+(side===1?7:-7),side
 })));
@@ -35,9 +64,11 @@ export const SIGNALS = CROSSROADS.flatMap(j=>[-1,1].map((side)=>({
 // Blocking geometry uses dimensions of the exact buildings rendered in 3D.
 // Open spaces (pavement, streets, spawn zones) are intentionally not blockers.
 export const OBSTACLES = [
-  {id:'home',x:WORKSHOPS.home.x,z:WORKSHOPS.home.z,w:9.3,d:8.2},
+  {id:'home',x:WORKSHOPS.home.x,z:WORKSHOPS.home.z,w:8.2,d:9.3},
   {id:'garage',x:WORKSHOPS.garage.x,z:WORKSHOPS.garage.z,w:10.3,d:9.2},
-  ...BUILDINGS.map(b=>({id:b.id,x:b.x,z:b.z,w:b.width,d:b.depth})),
+  ...ALL_BUILDINGS.map(b=>({id:b.id,x:b.x,z:b.z,
+    w:b.kind==='house'&&b.side!==0?b.depth:b.width,
+    d:b.kind==='house'&&b.side!==0?b.width:b.depth})),
   ...BENCHES.map(b=>({id:b.id,x:b.x,z:b.z,w:3.3,d:1.15})),
   ...LAMPS.map(l=>({id:l.id,x:l.x,z:l.z,w:.53,d:.53})),
   ...SIGNALS.map(l=>({id:l.id,x:l.x,z:l.z,w:.65,d:.65})),

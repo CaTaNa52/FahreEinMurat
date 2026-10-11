@@ -4,6 +4,7 @@ import { createInputRouter, gestureActions } from './input.js';
 import { loadProfile, PROFILE_KEY, chooseUpgrade } from './customization.js';
 import { TUTORIAL_STEPS, hasSeenTutorial, markTutorialSeen } from './tutorial.js';
 import Tutorial from './Tutorial.jsx';
+import InstallPrompt from './InstallPrompt.jsx';
 const GameCanvas = lazy(() => import('./GameCanvas.jsx'));
 const Customizer = lazy(() => import('./Customizer.jsx'));
 class SceneError extends Component {
@@ -204,6 +205,7 @@ export default function App(){
     return()=>{removeEventListener('keydown',down);removeEventListener('keyup',up);removeEventListener('blur',blur);document.removeEventListener('visibilitychange',hidden);};
   },[started,router,studio,nearby,nearBench,seated,tutorialStep]);
   return <>
+    <InstallPrompt started={started}/>
     {started&&<div className="scene-host"><SceneError><Suspense fallback={<div className="loading">3D-WELT WIRD GELADEN …</div>}><GameCanvas controls={controls} quality={quality} onSpeed={onSpeed} onGameEvent={onGameEvent} cosmetics={profile} view={view} paused={!!studio||tutorialStep!==null} tutorialStep={tutorialStep}/></Suspense></SceneError></div>}
     {started&&<div id="hud">
       <div id="top"><div className="brand">FAHRE EIN <em>MURAT.</em></div><div className="pill">🌲 FOREST FREERIDE</div><div className="wallet" data-testid="coins">🪙 {profile.coins.toLocaleString('de-DE')} MURAT-COINS</div></div>
