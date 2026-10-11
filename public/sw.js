@@ -45,7 +45,10 @@ self.addEventListener('fetch', event=>{
   if(url.pathname.startsWith('/assets/')||url.pathname.startsWith('/icons/')||
      url.pathname==='/manifest.webmanifest'){
     event.respondWith((async()=>{
-      const cached=await caches.match(request);
+      // Vite preview serves assets with Vary: Origin. The install-time precache
+      // request has no Origin header, while browser module/CSS requests have one.
+      // For these explicitly same-origin immutable files ignore Vary safely.
+      const cached=await caches.match(request,{ignoreVary:true});
       if(cached)return cached;
       const response=await fetch(request);
       if(response.ok){const cache=await caches.open(CACHE);cache.put(request,response.clone()).catch(()=>{});}

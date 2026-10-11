@@ -31,6 +31,7 @@ test('offline worker precaches the app, not live backend data',()=>{
   const vite=readFileSync('vite.config.js','utf8');
   assert.match(sw,/\bPRECACHE\b/);
   assert.match(sw,/skipWaiting/);
+  assert.match(sw,/ignoreVary:true/);
   assert.match(sw,/mode==='navigate'/);
   assert.match(sw,/request\.method!=='GET'/);
   assert.match(sw,/\bASSETS\b/);
