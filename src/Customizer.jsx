@@ -12,7 +12,13 @@ function Studio({room,profile,angle}) {
     <ambientLight intensity={2.2}/>
     <hemisphereLight intensity={2} color="#e6ffed" groundColor="#1a2b23"/>
     <directionalLight position={[-3,7,5]} intensity={2.8}/>
-    <gridHelper args={[11,11,'#578270','#2f4d41']} position={[0,-.04,0]}/>
+    <mesh position={[0,-.08,0]} rotation={[-Math.PI/2,0,0]}>
+      <planeGeometry args={[14,14]}/>
+      <meshStandardMaterial color="#43504a" roughness={.89}/>
+    </mesh>
+    <gridHelper args={[11,11,'#9db9a4','#627b6f']} position={[0,-.07,0]}/>
+    {room==='garage'&&profile.garage.underglow&&<pointLight position={[0,.55,0]}
+      color={profile.garage.glowColor??'#55ffcf'} intensity={6} distance={5} decay={2}/>} 
     <group rotation={[0,angle,0]} position={[0,room === 'garage' ? .12 : 0,0]}>
       {room==='garage'
         ? <group scale={1.25}><Scooter options={profile.garage} showRider={false}/></group>
@@ -101,6 +107,8 @@ export default function Customizer({room,profile,onChange,onClose,message}){
             <OptionSet room={category} profile={safeProfile} field="underglow" label="Unterbodenbeleuchtung"
               items={[{value:false,label:'Aus'},{value:true,label:'Neon an'}]}
               value={values.underglow} onChange={onChange}/>
+            <ColorPicker label="Neon-Farbe" value={values.glowColor??'#55ffcf'}
+              onChoose={v=>onChange(category,'glowColor',v)}/>
             <OptionSet room={category} profile={safeProfile} field="box" label="Gepäckbox"
               items={[{value:false,label:'Ohne'},{value:true,label:'Mit Box'}]}
               value={values.box} onChange={onChange}/>

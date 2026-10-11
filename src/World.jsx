@@ -3,6 +3,8 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { CHALLENGES, WORKSHOPS, SLALOM_CONES, SLALOM_FINISH, roadX, updateWheelie, createChallengeState, updateChallenges, failChallenge } from './gameplay.js';
 import { Scooter } from './Models.jsx';
+import { City } from './City.jsx';
+import { BENCHES, CROSSROADS, OBSTACLES, resolveWorldMovement, closestBench } from './worldLayout.js';
 
 const WORLD = 1200;
 const clamp = THREE.MathUtils.clamp;
@@ -13,7 +15,8 @@ function makeTrees(count) {
     let x, z, attempts = 0;
     do { x = (random() - .5) * (WORLD - 30); z = (random() - .5) * (WORLD - 30); attempts++; }
     while (attempts < 30 && (Math.abs(x - roadX(z)) < 13 || Math.hypot(x, z) < 18
-      || Object.values(WORKSHOPS).some(b => Math.hypot(x - b.x, z - b.z) < 19)));
+      || OBSTACLES.some(b => Math.abs(x-b.x)<b.w/2+4&&Math.abs(z-b.z)<b.d/2+4)
+      || CROSSROADS.some(c => Math.abs(z-c.z)<10&&Math.abs(x-c.x)<c.length/2+6)));
     trees.push({ x, z, scale: .65 + random() * 1.25, rot: random() * 6.283 });
   }
   return trees;
@@ -44,7 +47,7 @@ function Road() {
       const length = Math.hypot(dx, 7), nx = 7 / length * 5.3, nz = -dx / length * 5.3;
       positions.push(x - nx, .026, z - nz, x + nx, .026, z + nz, x2 - nx, .026, z + 7 - nz);
       positions.push(x + nx, .026, z + nz, x2 + nx, .026, z + 7 + nz, x2 - nx, .026, z + 7 - nz);
-      if (Math.floor((z + WORLD / 2) / 7) % 2 === 0) marks.push({ x: (x + x2) / 2, z: z + 3.5, rot: -Math.atan2(dx, 7) });
+      if (!CROSSROADS.some(c=>Math.abs(z-c.z)<8)&&Math.floor((z + WORLD / 2) / 7) % 2 === 0) marks.push({ x: (x + x2) / 2, z: z + 3.5, rot: -Math.atan2(dx, 7) });
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -125,36 +128,6 @@ function TrafficCone({ data }) {
   </group>;
 }
 
-function Building({config,type}){
-  const garage=type==='garage';
-  const paint=garage?'#293f41':'#c5a980';
-  const accent=garage?'#57e8cb':'#ffe7b1';
-  return <group position={[config.x,0,config.z]}>
-    <mesh position={[0,2.2,0]} castShadow receiveShadow>
-      <boxGeometry args={[garage ? 10 : 9,4.4,garage ? 9 : 8]}/>
-      <meshStandardMaterial color={paint} roughness={.87}/>
-    </mesh>
-    <mesh position={[0,4.8,0]} rotation={[0,0,garage ? 0 : .12]} castShadow>
-      {garage?<boxGeometry args={[11,1,9.6]}/>:<coneGeometry args={[7.5,3,4]}/>}
-      <meshStandardMaterial color={garage?'#202a31':'#784d3d'} roughness={.7}/>
-    </mesh>
-    <mesh position={[0,1.6,-(garage?4.52:4.02)]}>
-      <boxGeometry args={[garage?6:2.2,garage?3.1:3.2,.12]}/>
-      <meshStandardMaterial color={garage?'#354e57':'#543e2f'} metalness={garage ? .45 : .04} roughness={.65}/>
-    </mesh>
-    {[-1,1].map(side=><mesh key={side} position={[side*3.15,2.7,-(garage?4.54:4.05)]}>
-      <boxGeometry args={[1.05,1.25,.16]}/>
-      <meshStandardMaterial color="#a8dfff" emissive="#6baedc" emissiveIntensity={.22}/>
-    </mesh>)}
-    <mesh position={[0,.08,-(garage?7.5:6.3)]} rotation={[-Math.PI/2,0,0]}>
-      <ringGeometry args={[3.1,3.55,48]}/>
-      <meshBasicMaterial color={accent} transparent opacity={.85} side={THREE.DoubleSide} depthWrite={false}/>
-    </mesh>
-    <group position={[0,0,-(garage?6.5:5.5)]}>
-      <ZoneSign title={garage?'MURAT GARAGE':'ZUHAUSE'} subtitle="HIER ANHALTEN · E ÖFFNEN" color={accent}/>
-    </group>
-  </group>;
-}
 function Treasure({position}){
   const spin=useRef();
   useFrame(({clock})=>{
@@ -199,18 +172,43 @@ function ChallengeCourse({treasure}) {
     </mesh>
     <ChallengeZone config={CHALLENGES.wheelie} color="#4de5ff" subtitle="4 SEK. BALANCE · 1.000 COINS"/>
     <ChallengeZone config={CHALLENGES.hunt} color="#ffc84e" subtitle="FIND DEN SCHLÜSSEL · 1.250 COINS"/>
-    <Building config={WORKSHOPS.garage} type="garage"/>
-    <Building config={WORKSHOPS.home} type="home"/>
     {treasure&&<Treasure position={treasure}/>}
   </group>;
 }
 
-function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused }) {
-  const group = useRef(), scooter = useRef(), rider = useRef();
+
+// Visual spill stays horizontal on the asphalt even while doing a wheelie.
+// A real point light illuminates nearby StandardMaterials, a radial shader gives
+// a broad soft bloom without expensive postprocessing on phones.
+function GroundUnderglow({ tint, forwardedRef }) {
+  const uniforms=useMemo(()=>({uTint:{value:new THREE.Color(tint)}}),[tint]);
+  return <group ref={forwardedRef} renderOrder={3}>
+    <mesh position={[0,.006,-.32]} rotation={[-Math.PI/2,0,0]} renderOrder={3}>
+      <planeGeometry args={[5.6,6.8]}/>
+      <shaderMaterial key={tint} transparent depthWrite={false} depthTest
+        blending={THREE.AdditiveBlending} toneMapped={false} uniforms={uniforms}
+        vertexShader={`varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`}
+        fragmentShader={`uniform vec3 uTint; varying vec2 vUv; void main(){
+          vec2 p=(vUv-vec2(.5))*vec2(1.4,1.2);
+          float falloff=exp(-dot(p,p)*13.0);
+          float inner=exp(-dot(p,p)*35.0);
+          gl_FragColor=vec4(uTint,falloff*.46+inner*.18);
+        }`}/>
+    </mesh>
+    <pointLight position={[0,.62,-.28]} color={tint} intensity={8}
+      distance={6} decay={2}/>
+  </group>;
+}
+
+function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, onBenchChange }) {
+  const group = useRef(), scooter = useRef(), rider = useRef(), glow = useRef();
   const { camera } = useThree();
   const player = useRef({ x: roadX(0), z: 0, yaw: 0, speed: 0, pitch: 0, pitchVel: 0, lean: 0, timer: 0, fallen: false, fallTime: 0, respawnZ: 0 });
   const challenge = useRef(createChallengeState());
   const nearest=useRef(null);
+  const nearestBench=useRef(null);
+  const seatRef=useRef(null);
+  const [seat,setSeat]=useState(null);
   const proximityTimer=useRef(0);
   const grid = useMemo(() => {
     const cells = new Map();
@@ -225,6 +223,10 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused })
       failChallenge(challenge.current, 'Challenge abgebrochen.', onGameEvent);
       Object.assign(p, { x: roadX(0), z: 0, yaw: 0, speed: 0, pitch: 0, pitchVel: 0, lean: 0, fallen: false, fallTime: 0 });
       challenge.current.lastZone = null;
+      if(seatRef.current){
+        seatRef.current=null;setSeat(null);onBenchChange(null);
+        onGameEvent({type:'benchSeat',seated:false});
+      }
       c.reset = false;
     }
     if (p.fallen) {
@@ -238,7 +240,7 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused })
         challenge.current.lastZone = null;
         onGameEvent({ type: 'respawn' });
       }
-    } else {
+    } else if(!seatRef.current) {
       if (c.forward) p.speed += 11.5 * dt;
       if (c.back) p.speed -= 8 * dt;
       if (!c.forward && !c.back) p.speed *= Math.exp(-1.7 * dt);
@@ -246,9 +248,13 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused })
       p.speed = clamp(p.speed, -6, 23); if (Math.abs(p.speed) < .04) p.speed = 0;
       const steer = Number(c.left) - Number(c.right);
       p.yaw += steer * Math.min(1.7, .7 + Math.abs(p.speed) * .075) * dt * Math.sign(p.speed || 1) * (1 - p.pitch * .42);
-      p.x -= Math.sin(p.yaw) * p.speed * dt; p.z -= Math.cos(p.yaw) * p.speed * dt;
-      p.x = clamp(p.x, -WORLD / 2 + 10, WORLD / 2 - 10);
-      p.z = clamp(p.z, -WORLD / 2 + 10, WORLD / 2 - 10);
+      const target={
+        x:clamp(p.x-Math.sin(p.yaw)*p.speed*dt,-WORLD/2+10,WORLD/2-10),
+        z:clamp(p.z-Math.cos(p.yaw)*p.speed*dt,-WORLD/2+10,WORLD/2-10)
+      };
+      const resolved=resolveWorldMovement(before,target,OBSTACLES,.72);
+      p.x=resolved.x;p.z=resolved.z;
+      if(resolved.blocked)p.speed*=.28;
       const gx = Math.floor(p.x / 16), gz = Math.floor(p.z / 16);
       for (let ox = -1; ox <= 1; ox++) for (let oz = -1; oz <= 1; oz++) for (const tree of grid.get((gx + ox) + ',' + (gz + oz)) || []) {
         const dx = p.x - tree.x, dz = p.z - tree.z, dist = Math.hypot(dx, dz), radius = tree.scale * .38 + .45;
@@ -263,6 +269,22 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused })
       } else {
         updateChallenges(challenge.current, before, p, dt, onGameEvent);
       }
+    }
+    const bench=closestBench(p.x,p.z,3.85);
+    if(c.interact){
+      if(seatRef.current){
+        seatRef.current=null;setSeat(null);onBenchChange(null);
+        onGameEvent({type:'benchSeat',seated:false});c.interact=false;
+      }else if(bench&&Math.abs(p.speed)<1.8&&!p.fallen){
+        seatRef.current=bench;setSeat(bench);onBenchChange(bench);
+        p.speed=0;p.pitch=0;p.pitchVel=0;p.lean=0;
+        onGameEvent({type:'benchSeat',seated:true});c.interact=false;
+      }else c.interact=false;
+    }
+    if(seatRef.current)p.speed=0;
+    if(glow.current){
+      glow.current.position.set(p.x,.067,p.z);
+      glow.current.rotation.y=p.yaw;
     }
     group.current.position.set(p.x, .34, p.z); group.current.rotation.y = p.yaw;
     scooter.current.rotation.x = p.pitch;
@@ -285,10 +307,24 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused })
       proximityTimer.current=0;
       const at=Object.entries(WORKSHOPS).find(([,place])=>Math.hypot(p.x-place.x,p.z-place.z)<place.radius+4)?.[0]??null;
       if(at!==nearest.current){nearest.current=at;onGameEvent({type:'near',place:at});}
+      const currentBench=seatRef.current||(Math.abs(p.speed)<1.8?closestBench(p.x,p.z,3.85):null);
+      if(currentBench?.id!==nearestBench.current?.id){
+        nearestBench.current=currentBench;
+        onGameEvent({type:'benchNearby',benchId:currentBench?.id??null});
+      }
     }
     p.timer += dt; if (p.timer >= .13) { p.timer = 0; onSpeed(p.speed); }
   });
-  return <group ref={group}><group ref={scooter}><Scooter riderRef={rider} options={cosmetics.garage} rider={cosmetics.rider} showRider={view!=='first'}/></group></group>;
+  return <>
+    <group ref={group}>
+      <group ref={scooter}>
+        <Scooter riderRef={rider} options={cosmetics.garage} rider={cosmetics.rider}
+          showRider={view!=='first'&&!seat}/>
+      </group>
+    </group>
+    {cosmetics.garage.underglow&&<GroundUnderglow forwardedRef={glow}
+      tint={cosmetics.garage.glowColor??'#55ffcf'}/>}
+  </>;
 }
 // Guided camera introduction: free-look at actual buildings and challenge zones
 // while player physics are safely paused. No scene swaps or extra WebGL context.
@@ -312,6 +348,7 @@ export default function World({ input, quality, onSpeed, onGameEvent, cosmetics,
   const count = quality === 'low' ? 600 : 1300;
   const trees = useMemo(() => makeTrees(count), [count]);
   const [treasure,setTreasure] = useState(null);
+  const [seatedBench,setSeatedBench]=useState(null);
   const handleEvent = event => {
     if(event.id==='hunt') {
       if(event.type==='start')setTreasure(event.target);
@@ -324,6 +361,10 @@ export default function World({ input, quality, onSpeed, onGameEvent, cosmetics,
     <hemisphereLight args={['#e6f5ff', '#59704b', 2.1]}/>
     <directionalLight position={[-70, 115, -70]} intensity={2.7} color="#ffefd0" castShadow={quality === 'high'} shadow-mapSize={[1024,1024]} shadow-camera-left={-90} shadow-camera-right={90} shadow-camera-top={90} shadow-camera-bottom={-90}/>
     <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[WORLD, WORLD]}/><meshStandardMaterial color="#577749" roughness={1}/></mesh>
-    <Road/><Forest trees={trees}/><ChallengeCourse treasure={treasure}/><Driver input={input} trees={trees} onSpeed={onSpeed} onGameEvent={handleEvent} cosmetics={cosmetics} view={view} paused={paused}/><TourCamera step={tutorialStep}/>
+    <Road/><City quality={quality} seatedBench={seatedBench} rider={cosmetics.rider}/>
+    <Forest trees={trees}/><ChallengeCourse treasure={treasure}/>
+    <Driver input={input} trees={trees} onSpeed={onSpeed} onGameEvent={handleEvent}
+      cosmetics={cosmetics} view={view} paused={paused} onBenchChange={setSeatedBench}/>
+    <TourCamera step={tutorialStep}/>
   </>;
 }
