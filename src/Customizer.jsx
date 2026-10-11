@@ -42,7 +42,7 @@ function OptionSet({label,items,value,room,field,profile,onChange}){
         return <button key={String(item.value)} type="button"
           className={'choice'+(item.value===value?' selected':'')}
           disabled={!affordable}
-          onClick={()=>onChange(room,field,item.value)}>
+          onClick={()=>onChange(category,field,item.value)}>
           {item.label}{cost&&!owned?' · '+cost.toLocaleString('de-DE')+' 🪙':''}
           {cost&&owned?' · ✓':''}
         </button>;
@@ -53,7 +53,9 @@ function OptionSet({label,items,value,room,field,profile,onChange}){
 export default function Customizer({room,profile,onChange,onClose,message}){
   const [angle,setAngle]=useState(.45);
   const dragging=useRef(null);
-  const values=profile[room], garage=room==='garage';
+  const garage=room==='garage';
+  const category=garage?'garage':'rider';
+  const values=profile[category];
   return <div className="customizer-layer" role="dialog" aria-modal="true"
     aria-label={garage?'Murat Garage':'Zuhause'}>
     <section className="customizer-window">
@@ -85,37 +87,37 @@ export default function Customizer({room,profile,onChange,onClose,message}){
         <div className="studio-options">
           <div className="studio-wallet">🪙 {profile.coins.toLocaleString('de-DE')} MURAT-COINS</div>
           {garage?<>
-            <OptionSet room={room} profile={profile} field="model" label="Scooter-Modell"
+            <OptionSet room={category} profile={profile} field="model" label="Scooter-Modell"
               items={MODEL_OPTIONS} value={values.model} onChange={onChange}/>
             <ColorPicker label="Scooter-Farbe" value={values.body}
-              onChoose={v=>onChange(room,'body',v)}/>
+              onChoose={v=>onChange(category,'body',v)}/>
             <ColorPicker label="Akzentfarbe / Deck" value={values.trim}
-              onChoose={v=>onChange(room,'trim',v)}/>
+              onChoose={v=>onChange(category,'trim',v)}/>
             <ColorPicker label="Frontlicht" value={values.light}
-              onChoose={v=>onChange(room,'light',v)}/>
-            <OptionSet room={room} profile={profile} field="tires" label="Reifen"
+              onChoose={v=>onChange(category,'light',v)}/>
+            <OptionSet room={category} profile={profile} field="tires" label="Reifen"
               items={TIRES_OPTIONS} value={values.tires} onChange={onChange}/>
-            <OptionSet room={room} profile={profile} field="underglow" label="Unterbodenbeleuchtung"
+            <OptionSet room={category} profile={profile} field="underglow" label="Unterbodenbeleuchtung"
               items={[{value:false,label:'Aus'},{value:true,label:'Neon an'}]}
               value={values.underglow} onChange={onChange}/>
-            <OptionSet room={room} profile={profile} field="box" label="Gepäckbox"
+            <OptionSet room={category} profile={profile} field="box" label="Gepäckbox"
               items={[{value:false,label:'Ohne'},{value:true,label:'Mit Box'}]}
               value={values.box} onChange={onChange}/>
           </>:<>
-            <OptionSet room={room} profile={profile} field="helmet" label="Helm"
+            <OptionSet room={category} profile={profile} field="helmet" label="Helm"
               items={[{value:false,label:'Abnehmen'},{value:true,label:'Anziehen'}]}
               value={values.helmet} onChange={onChange}/>
             <ColorPicker label="Helmfarbe" value={values.helmetColor}
-              onChoose={v=>onChange(room,'helmetColor',v)}/>
+              onChoose={v=>onChange(category,'helmetColor',v)}/>
             <ColorPicker label="Oberkörper / Jacke" value={values.jacket}
-              onChoose={v=>onChange(room,'jacket',v)}/>
+              onChoose={v=>onChange(category,'jacket',v)}/>
             <ColorPicker label="Hose" value={values.pants}
-              onChoose={v=>onChange(room,'pants',v)}/>
-            <OptionSet room={room} profile={profile} field="watch" label="Armbanduhr"
+              onChoose={v=>onChange(category,'pants',v)}/>
+            <OptionSet room={category} profile={profile} field="watch" label="Armbanduhr"
               items={[{value:false,label:'Abnehmen'},{value:true,label:'Anziehen'}]}
               value={values.watch} onChange={onChange}/>
             <ColorPicker label="Uhrenfarbe" value={values.watchColor}
-              onChoose={v=>onChange(room,'watchColor',v)}/>
+              onChoose={v=>onChange(category,'watchColor',v)}/>
           </>}
           {message&&<p className="studio-message" role="status">{message}</p>}
           <button className="studio-done" type="button" onClick={onClose}>✓ FERTIG · ZURÜCK INS SPIEL</button>
