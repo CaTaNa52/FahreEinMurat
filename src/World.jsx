@@ -1,7 +1,8 @@
 import { useFrame, useThree } from '@react-three/fiber';
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { CHALLENGES, SLALOM_CONES, SLALOM_FINISH, roadX, updateWheelie, createChallengeState, updateChallenges, failChallenge } from './gameplay.js';
+import { CHALLENGES, WORKSHOPS, SLALOM_CONES, SLALOM_FINISH, roadX, updateWheelie, createChallengeState, updateChallenges, failChallenge } from './gameplay.js';
+import { Scooter } from './Models.jsx';
 
 const WORLD = 1200;
 const clamp = THREE.MathUtils.clamp;
@@ -11,7 +12,8 @@ function makeTrees(count) {
   for (let i = 0; i < count; i++) {
     let x, z, attempts = 0;
     do { x = (random() - .5) * (WORLD - 30); z = (random() - .5) * (WORLD - 30); attempts++; }
-    while (attempts < 30 && (Math.abs(x - roadX(z)) < 13 || Math.hypot(x, z) < 18));
+    while (attempts < 30 && (Math.abs(x - roadX(z)) < 13 || Math.hypot(x, z) < 18
+      || Object.values(WORKSHOPS).some(b => Math.hypot(x - b.x, z - b.z) < 19)));
     trees.push({ x, z, scale: .65 + random() * 1.25, rot: random() * 6.283 });
   }
   return trees;
@@ -61,33 +63,6 @@ function Road() {
     <instancedMesh ref={dashRef} args={[undefined, undefined, dashes.length]}><boxGeometry args={[.16, .016, 2.5]}/><meshStandardMaterial color="#eadfc2"/></instancedMesh>
   </group>;
 }
-function Wheel({ z }) { return <group position={[0, .33, z]}>
-  <mesh rotation={[0, Math.PI / 2, 0]} castShadow><torusGeometry args={[.28, .085, 10, 20]}/><meshStandardMaterial color="#161c1d" roughness={.9}/></mesh>
-  <mesh rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[.15, .15, .12, 16]}/><meshStandardMaterial color="#aab4ad" metalness={.7} roughness={.3}/></mesh>
-</group>; }
-function Rider() { return <group>
-  <mesh position={[0, 1.28, .13]} castShadow><capsuleGeometry args={[.29, .6, 4, 8]}/><meshStandardMaterial color="#16434c"/></mesh>
-  <mesh position={[0, 1.94, .08]} castShadow><sphereGeometry args={[.225, 12, 10]}/><meshStandardMaterial color="#dbb995"/></mesh>
-  <mesh position={[0, 2.095, .08]} castShadow><sphereGeometry args={[.24, 12, 10]}/><meshStandardMaterial color="#20282d" roughness={.5}/></mesh>
-  <mesh position={[0, 2.08, -.12]}><boxGeometry args={[.35, .07, .19]}/><meshStandardMaterial color="#51dfaa"/></mesh>
-  {[-1, 1].map(side => <group key={side}>
-    <mesh position={[side * .18, .84, .22]} castShadow><capsuleGeometry args={[.09, .46, 4, 7]}/><meshStandardMaterial color="#1f2832"/></mesh>
-    <mesh position={[side * .18, .56, .04]}><boxGeometry args={[.19, .1, .4]}/><meshStandardMaterial color="#e4dcc8"/></mesh>
-    <mesh position={[side * .3, 1.43, -.28]} rotation={[-.82, 0, side * .2]} castShadow><capsuleGeometry args={[.09, .49, 4, 7]}/><meshStandardMaterial color="#16434c"/></mesh>
-    <mesh position={[side * .35, 1.64, -.75]}><sphereGeometry args={[.09, 8, 8]}/><meshStandardMaterial color="#dbb995"/></mesh>
-  </group>)}
-</group>; }
-function Scooter({ riderRef }) { return <group position={[0, -.33, -.66]}>
-  <Wheel z={.66}/><Wheel z={-.69}/>
-  <mesh position={[0, .43, .02]} castShadow><boxGeometry args={[.43, .16, 1.35]}/><meshStandardMaterial color="#1c292c" metalness={.36} roughness={.46}/></mesh>
-  <mesh position={[0, .52, .02]} castShadow><boxGeometry args={[.4, .03, 1.12]}/><meshStandardMaterial color="#53e4ab" metalness={.32}/></mesh>
-  <mesh position={[0, 1.04, -.72]} rotation={[-.07, 0, 0]} castShadow><cylinderGeometry args={[.055, .065, 1.27, 10]}/><meshStandardMaterial color="#9eafb4" metalness={.74} roughness={.28}/></mesh>
-  <mesh position={[0, 1.67, -.79]} rotation={[0, 0, Math.PI / 2]} castShadow><cylinderGeometry args={[.05, .05, .79, 10]}/><meshStandardMaterial color="#202b30"/></mesh>
-  <mesh position={[0, 1.13, -.79]}><sphereGeometry args={[.12, 10, 10]}/><meshStandardMaterial color="#fff0c0" emissive="#ffe8a4" emissiveIntensity={.8}/></mesh>
-  <mesh position={[0, .47, .72]}><boxGeometry args={[.22, .08, .09]}/><meshStandardMaterial color="#ff4545" emissive="#ff2525" emissiveIntensity={.5}/></mesh>
-  <group ref={riderRef}><Rider/></group>
-</group>; }
-
 function ZoneSign({ title, subtitle, color }) {
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas');
@@ -149,7 +124,72 @@ function TrafficCone({ data }) {
     </mesh>
   </group>;
 }
-function ChallengeCourse() {
+
+function Building({config,type}){
+  const garage=type==='garage';
+  const paint=garage?'#293f41':'#c5a980';
+  const accent=garage?'#57e8cb':'#ffe7b1';
+  return <group position={[config.x,0,config.z]}>
+    <mesh position={[0,2.2,0]} castShadow receiveShadow>
+      <boxGeometry args={[garage ? 10 : 9,4.4,garage ? 9 : 8]}/>
+      <meshStandardMaterial color={paint} roughness={.87}/>
+    </mesh>
+    <mesh position={[0,4.8,0]} rotation={[0,0,garage ? 0 : .12]} castShadow>
+      {garage?<boxGeometry args={[11,1,9.6]}/>:<coneGeometry args={[7.5,3,4]}/>}
+      <meshStandardMaterial color={garage?'#202a31':'#784d3d'} roughness={.7}/>
+    </mesh>
+    <mesh position={[0,1.6,-(garage?4.52:4.02)]}>
+      <boxGeometry args={[garage?6:2.2,garage?3.1:3.2,.12]}/>
+      <meshStandardMaterial color={garage?'#354e57':'#543e2f'} metalness={garage ? .45 : .04} roughness={.65}/>
+    </mesh>
+    {[-1,1].map(side=><mesh key={side} position={[side*3.15,2.7,-(garage?4.54:4.05)]}>
+      <boxGeometry args={[1.05,1.25,.16]}/>
+      <meshStandardMaterial color="#a8dfff" emissive="#6baedc" emissiveIntensity={.22}/>
+    </mesh>)}
+    <mesh position={[0,.08,-(garage?7.5:6.3)]} rotation={[-Math.PI/2,0,0]}>
+      <ringGeometry args={[3.1,3.55,48]}/>
+      <meshBasicMaterial color={accent} transparent opacity={.85} side={THREE.DoubleSide} depthWrite={false}/>
+    </mesh>
+    <group position={[0,0,-(garage?6.5:5.5)]}>
+      <ZoneSign title={garage?'MURAT GARAGE':'ZUHAUSE'} subtitle="HIER ANHALTEN · E ÖFFNEN" color={accent}/>
+    </group>
+  </group>;
+}
+function Treasure({position}){
+  const spin=useRef();
+  useFrame(({clock})=>{
+    if(spin.current){
+      spin.current.rotation.y=clock.elapsedTime*1.35;
+      spin.current.position.y=1.15+Math.sin(clock.elapsedTime*2.4)*.17;
+    }
+  });
+  return <group position={[position.x,0,position.z]}>
+    <group ref={spin}>
+      <mesh rotation={[0,0,Math.PI/2]} castShadow>
+        <torusGeometry args={[.22,.07,9,20]}/>
+        <meshStandardMaterial color="#fdd259" metalness={.8} roughness={.16} emissive="#d18a06" emissiveIntensity={.65}/>
+      </mesh>
+      <mesh position={[.43,0,0]} rotation={[0,0,Math.PI/2]}>
+        <cylinderGeometry args={[.066,.066,.84,10]}/>
+        <meshStandardMaterial color="#ffe27a" metalness={.8} roughness={.18}/>
+      </mesh>
+      <mesh position={[.75,-.13,0]}>
+        <boxGeometry args={[.15,.26,.14]}/>
+        <meshStandardMaterial color="#ffd24f" metalness={.8} roughness={.15}/>
+      </mesh>
+      <mesh position={[.59,-.11,0]}>
+        <boxGeometry args={[.13,.19,.14]}/>
+        <meshStandardMaterial color="#ffd24f" metalness={.8} roughness={.15}/>
+      </mesh>
+    </group>
+    <mesh rotation={[-Math.PI/2,0,0]} position={[0,.055,0]}>
+      <circleGeometry args={[.5,24]}/>
+      <meshBasicMaterial color="#eec958" transparent opacity={.3} depthWrite={false}/>
+    </mesh>
+  </group>;
+}
+
+function ChallengeCourse({treasure}) {
   return <group>
     <ChallengeZone config={CHALLENGES.slalom} color="#acff45" subtitle="40 SEK. · 1.000 COINS"/>
     {SLALOM_CONES.map((cone, i) => <TrafficCone key={i} data={cone}/>)}
@@ -158,20 +198,27 @@ function ChallengeCourse() {
       <meshBasicMaterial color="#ecffac" transparent opacity={.83} side={THREE.DoubleSide}/>
     </mesh>
     <ChallengeZone config={CHALLENGES.wheelie} color="#4de5ff" subtitle="4 SEK. BALANCE · 1.000 COINS"/>
+    <ChallengeZone config={CHALLENGES.hunt} color="#ffc84e" subtitle="FIND DEN SCHLÜSSEL · 1.250 COINS"/>
+    <Building config={WORKSHOPS.garage} type="garage"/>
+    <Building config={WORKSHOPS.home} type="home"/>
+    {treasure&&<Treasure position={treasure}/>}
   </group>;
 }
 
-function Driver({ input, trees, onSpeed, onGameEvent }) {
+function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused }) {
   const group = useRef(), scooter = useRef(), rider = useRef();
   const { camera } = useThree();
   const player = useRef({ x: roadX(0), z: 0, yaw: 0, speed: 0, pitch: 0, pitchVel: 0, lean: 0, timer: 0, fallen: false, fallTime: 0, respawnZ: 0 });
   const challenge = useRef(createChallengeState());
+  const nearest=useRef(null);
+  const proximityTimer=useRef(0);
   const grid = useMemo(() => {
     const cells = new Map();
     trees.forEach(t => { const key = Math.floor(t.x / 16) + ',' + Math.floor(t.z / 16); if (!cells.has(key)) cells.set(key, []); cells.get(key).push(t); });
     return cells;
   }, [trees]);
   useFrame((_, frameDt) => {
+    if(paused)return;
     const dt = Math.min(frameDt, .05), p = player.current, c = input.current;
     const before = { x: p.x, z: p.z };
     if (c.reset) {
@@ -226,21 +273,39 @@ function Driver({ input, trees, onSpeed, onGameEvent }) {
       rider.current.rotation.z = -.6 * t;
       rider.current.position.set(0, -.22 * t, -1.1 * t);
     }
-    const desired = new THREE.Vector3(p.x + Math.sin(p.yaw) * 6.9, 3.8, p.z + Math.cos(p.yaw) * 6.9);
-    camera.position.lerp(desired, 1 - Math.exp(-5 * dt));
-    camera.lookAt(p.x, 1.4 + p.pitch * .4, p.z);
+    const first=view==='first';
+    const desired = first
+      ? new THREE.Vector3(p.x-Math.sin(p.yaw)*.52,1.72+Math.sin(p.pitch)*.14,p.z-Math.cos(p.yaw)*.52)
+      : new THREE.Vector3(p.x+Math.sin(p.yaw)*6.9,3.8,p.z+Math.cos(p.yaw)*6.9);
+    camera.position.lerp(desired,1-Math.exp(-(first?12:5)*dt));
+    if(first)camera.lookAt(p.x-Math.sin(p.yaw)*12,1.57+p.pitch*1.5,p.z-Math.cos(p.yaw)*12);
+    else camera.lookAt(p.x,1.4+p.pitch*.4,p.z);
+    proximityTimer.current+=dt;
+    if(proximityTimer.current>.3){
+      proximityTimer.current=0;
+      const at=Object.entries(WORKSHOPS).find(([,place])=>Math.hypot(p.x-place.x,p.z-place.z)<place.radius+4)?.[0]??null;
+      if(at!==nearest.current){nearest.current=at;onGameEvent({type:'near',place:at});}
+    }
     p.timer += dt; if (p.timer >= .13) { p.timer = 0; onSpeed(p.speed); }
   });
-  return <group ref={group}><group ref={scooter}><Scooter riderRef={rider}/></group></group>;
+  return <group ref={group}><group ref={scooter}><Scooter riderRef={rider} options={cosmetics.garage} rider={cosmetics.rider} showRider={view!=='first'}/></group></group>;
 }
-export default function World({ input, quality, onSpeed, onGameEvent }) {
+export default function World({ input, quality, onSpeed, onGameEvent, cosmetics, view, paused }) {
   const count = quality === 'low' ? 600 : 1300;
   const trees = useMemo(() => makeTrees(count), [count]);
+  const [treasure,setTreasure] = useState(null);
+  const handleEvent = event => {
+    if(event.id==='hunt') {
+      if(event.type==='start')setTreasure(event.target);
+      if(event.type==='won'||event.type==='failed')setTreasure(null);
+    }
+    onGameEvent(event);
+  };
   return <>
     <color attach="background" args={['#a4c8d0']}/><fog attach="fog" args={['#a4c8d0', 70, quality === 'low' ? 240 : 360]}/>
     <hemisphereLight args={['#e6f5ff', '#59704b', 2.1]}/>
     <directionalLight position={[-70, 115, -70]} intensity={2.7} color="#ffefd0" castShadow={quality === 'high'} shadow-mapSize={[1024,1024]} shadow-camera-left={-90} shadow-camera-right={90} shadow-camera-top={90} shadow-camera-bottom={-90}/>
     <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[WORLD, WORLD]}/><meshStandardMaterial color="#577749" roughness={1}/></mesh>
-    <Road/><Forest trees={trees}/><ChallengeCourse/><Driver input={input} trees={trees} onSpeed={onSpeed} onGameEvent={onGameEvent}/>
+    <Road/><Forest trees={trees}/><ChallengeCourse treasure={treasure}/><Driver input={input} trees={trees} onSpeed={onSpeed} onGameEvent={handleEvent} cosmetics={cosmetics} view={view} paused={paused}/>
   </>;
 }

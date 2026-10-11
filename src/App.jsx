@@ -1,7 +1,9 @@
 import { Component, Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { CHALLENGES } from './gameplay.js';
 import { createInputRouter, gestureActions } from './input.js';
+import { loadProfile, PROFILE_KEY, chooseUpgrade } from './customization.js';
 const GameCanvas = lazy(() => import('./GameCanvas.jsx'));
+const Customizer = lazy(() => import('./Customizer.jsx'));
 class SceneError extends Component {
   constructor(props){super(props);this.state={error:null};}
   static getDerivedStateFromError(error){return {error};}
@@ -105,14 +107,6 @@ function RidePad({router}) {
       aria-label="Gas" className={'ctrl primary ride-gas'+(active.gas?' held':'')}>GAS ⚡</button>
   </div>;
 }
-const WALLET_KEY = 'fahre-ein-murat-wallet-v1';
-function readWallet(){
-  try {
-    const data = JSON.parse(localStorage.getItem(WALLET_KEY) || '{}');
-    return { coins: Number.isFinite(data.coins) && data.coins >= 0 ? data.coins : 0,
-      completed: Array.isArray(data.completed) ? data.completed.filter(id => CHALLENGES[id]) : [] };
-  } catch { return { coins: 0, completed: [] }; }
-}
 function supportsWebGL(){try{const canvas=document.createElement('canvas');return !!(canvas.getContext('webgl2')||canvas.getContext('webgl'));}catch{return false;}}
 export default function App(){
   const controls=useRef({forward:false,back:false,left:false,right:false,brake:false,wheelie:false,reset:false});
@@ -121,31 +115,46 @@ export default function App(){
   const router=routerRef.current;
   const [started,setStarted]=useState(false);
   const [unsupported,setUnsupported]=useState(false);
-  const [wallet,setWallet]=useState(readWallet);
-  const rewarded=useRef(new Set(wallet.completed));
+  const [profile,setProfile]=useState(()=>loadProfile(localStorage));
   const [challenge,setChallenge]=useState(null);
+  const [view,setView]=useState('third');
+  const [studio,setStudio]=useState(null);
+  const [studioMessage,setStudioMessage]=useState('');
+  const [nearby,setNearby]=useState(null);
   const [quality,setQuality]=useState('high');
   const [kmh,setKmh]=useState(0);
   const speedRef=useRef(0);
   const onSpeed=useCallback(speed=>{const value=Math.round(Math.abs(speed)*3.6);if(value!==speedRef.current){speedRef.current=value;setKmh(value);}},[]);
   const onGameEvent=useCallback(event=>{
+    if(event.type==='near'){
+      setNearby(prev=>prev===event.place?prev:event.place);
+      return;
+    }
     if(event.type==='won'){
-      const first=!rewarded.current.has(event.id);
-      if(first) {
-        rewarded.current.add(event.id);
-        setWallet(prev=>({ coins: prev.coins+CHALLENGES[event.id].reward,
-          completed: [...new Set([...prev.completed,event.id])] }));
-      }
-      setChallenge({ ...event, reward: first ? CHALLENGES[event.id].reward : 0 });
-    } else if(event.type==='crash') {
+      // Unlimited rewards: every successful attempt pays again.
+      setProfile(prev=>({...prev,coins:prev.coins+CHALLENGES[event.id].reward}));
+      setChallenge({...event,reward:CHALLENGES[event.id].reward});
+    } else if(event.type==='crash'){
       setChallenge(prev=>prev?.type==='failed'?prev:{type:'crash',reason:'Zu hoch! Du bist vom Scooter gefallen.'});
-    } else if(event.type==='respawn') {
+    } else if(event.type==='respawn'){
       setChallenge(prev=>prev?.type==='crash'?null:prev);
     } else {
       setChallenge(event);
     }
   },[]);
-  useEffect(()=>{try{localStorage.setItem(WALLET_KEY,JSON.stringify(wallet));}catch{/* private mode */}},[wallet]);
+  useEffect(()=>{try{localStorage.setItem(PROFILE_KEY,JSON.stringify(profile));}catch{/* no storage */}},[profile]);
+  const openStudio=(room)=>{
+    router.clearAll();
+    setStudioMessage('');
+    setStudio(room);
+  };
+  const closeStudio=()=>{router.clearAll();setStudio(null);setStudioMessage('');};
+  const customize=(category,key,value)=>{
+    const outcome=chooseUpgrade(profile,category,key,value);
+    if(outcome.error){setStudioMessage(outcome.error);return;}
+    setProfile(outcome.profile);
+    setStudioMessage(outcome.paid?'🪙 '+outcome.paid+' Murat-Coins ausgegeben.':'✓ Anpassung gespeichert.');
+  };
   const begin=()=>{
     if(!supportsWebGL()){setUnsupported(true);return;}
     setQuality((matchMedia('(pointer:coarse)').matches||innerWidth<850)?'low':'high');
@@ -153,33 +162,34 @@ export default function App(){
   };
   useEffect(()=>{
     const map={KeyW:'forward',ArrowUp:'forward',KeyS:'back',ArrowDown:'back',KeyA:'left',ArrowLeft:'left',KeyD:'right',ArrowRight:'right',ShiftLeft:'brake',ShiftRight:'brake',Space:'wheelie'};
-    const down=e=>{const a=map[e.code];if(a){router.setKey(e.code,a,true);e.preventDefault();}if(e.code==='KeyR')controls.current.reset=true;if(e.code==='Enter'&&!started)begin();};
+    const down=e=>{if(studio){if(e.code==='Escape')closeStudio();return;}const a=map[e.code];if(a){router.setKey(e.code,a,true);e.preventDefault();}if(e.code==='KeyR')controls.current.reset=true;if(e.code==='KeyV'&&!e.repeat)setView(v=>v==='third'?'first':'third');if(e.code==='KeyE'&&nearby)openStudio(nearby);if(e.code==='Enter'&&!started)begin();};
     const up=e=>{const a=map[e.code];if(a){router.setKey(e.code,a,false);e.preventDefault();}};
     const blur=()=>router.clearAll();
     const hidden=()=>{if(document.hidden)router.clearAll();};
     addEventListener('keydown',down);addEventListener('keyup',up);addEventListener('blur',blur);document.addEventListener('visibilitychange',hidden);
     return()=>{removeEventListener('keydown',down);removeEventListener('keyup',up);removeEventListener('blur',blur);document.removeEventListener('visibilitychange',hidden);};
-  },[started,router]);
+  },[started,router,studio,nearby]);
   return <>
-    {started&&<div className="scene-host"><SceneError><Suspense fallback={<div className="loading">3D-WELT WIRD GELADEN …</div>}><GameCanvas controls={controls} quality={quality} onSpeed={onSpeed} onGameEvent={onGameEvent}/></Suspense></SceneError></div>}
+    {started&&<div className="scene-host"><SceneError><Suspense fallback={<div className="loading">3D-WELT WIRD GELADEN …</div>}><GameCanvas controls={controls} quality={quality} onSpeed={onSpeed} onGameEvent={onGameEvent} cosmetics={profile} view={view} paused={!!studio}/></Suspense></SceneError></div>}
     {started&&<div id="hud">
-      <div id="top"><div className="brand">FAHRE EIN <em>MURAT.</em></div><div className="pill">🌲 FOREST FREERIDE</div><div className="wallet" data-testid="coins">🪙 {wallet.coins.toLocaleString('de-DE')} MURAT-COINS</div></div>
+      <div id="top"><div className="brand">FAHRE EIN <em>MURAT.</em></div><div className="pill">🌲 FOREST FREERIDE</div><div className="wallet" data-testid="coins">🪙 {profile.coins.toLocaleString('de-DE')} MURAT-COINS</div></div>
       <div className="speed"><strong data-testid="speed">{kmh}</strong> <span>KM/H</span><small>● FREERIDE + CHALLENGES</small></div>
       <div className="tip">Fahre in leuchtende Felder für Challenges. Wheelie: Leertaste gedrückt halten, rechtzeitig loslassen oder bremsen!</div>
       {challenge && <div className={`challenge-panel ${challenge.type}`} role="status" data-testid="challenge">
         {challenge.id && <div className="challenge-name">{CHALLENGES[challenge.id]?.name}</div>}
         {['start','progress'].includes(challenge.type) ? <>
-          <div className="challenge-title">{challenge.id==='slalom'?'SLALOM FAHREN!':'WHEELIE BALANCIEREN!'}</div>
-          <div className="challenge-stat"><strong>{Math.ceil(challenge.remaining ?? CHALLENGES[challenge.id].limit)}s</strong><span>{challenge.id==='slalom'?
-            `${Math.floor(challenge.progress||0)} / 7 Hütchen`:
-            `${Number(challenge.progress||0).toFixed(1)} / 4.0 Sek. Balance`}</span></div>
-          <div className="challenge-meter"><div style={{width:`${Math.min(100,100*(challenge.progress||0)/(challenge.id==='slalom'?7:4))}%`}}/></div>
+          <div className="challenge-title">{challenge.id==='slalom'?'SLALOM FAHREN!':challenge.id==='wheelie'?'WHEELIE BALANCIEREN!':'FIND DEN GOLDENEN SCHLÜSSEL!'}</div>
+          <div className="challenge-stat"><strong>{Math.ceil(challenge.remaining ?? CHALLENGES[challenge.id].limit)}s</strong><span>{challenge.id==='slalom'? `${Math.floor(challenge.progress||0)} / 7 Hütchen`:
+            challenge.id==='wheelie'? `${Number(challenge.progress||0).toFixed(1)} / 4.0 Sek. Balance`:
+            'SUCHEN & FINDEN'}</span></div>
+          {challenge.id!=='hunt'&&<div className="challenge-meter"><div style={{width:`${Math.min(100,100*(challenge.progress||0)/(challenge.id==='slalom'?7:4))}%`}}/></div>}
           <div className="challenge-help">{challenge.id==='slalom'?
             'Fahre abwechselnd rechts und links an den Hütchen vorbei. Folge den grünen Ringen bis ins Ziel.':
-            'Halte Wheelie zum Anheben. Lass los, um zu balancieren. Zu hoher Winkel = Sturz!'} </div>
+            challenge.id==='wheelie'?'Halte Wheelie zum Anheben. Lass los, um zu balancieren. Zu hoher Winkel = Sturz!':
+            'Ein goldener Schlüssel ist irgendwo versteckt. Keine Pfeile, keine Entfernungsanzeige – erkunde die Welt und finde ihn!'} </div>
           {challenge.id==='wheelie'&&<div className="wheelie-angle">Radwinkel: <strong>{Math.round((challenge.pitch||0)*180/Math.PI)}°</strong> · Balance: 13–40° · Sturz: 50°</div>}
         </> : <><div className="challenge-title">{challenge.type==='won'?'🏆 GESCHAFFT!':challenge.type==='failed'?'✖ CHALLENGE GESCHEITERT':'💥 STURZ!'}</div>
-          <div className="challenge-help">{challenge.type==='won'?(challenge.reward>0?`+${challenge.reward.toLocaleString('de-DE')} Murat-Coins!`:'Bereits belohnt – super gefahren!'):(challenge.reason||'Versuch es erneut.')}</div>
+          <div className="challenge-help">{challenge.type==='won'?`+${challenge.reward.toLocaleString('de-DE')} Murat-Coins! Erneut spielbar.`:(challenge.reason||'Versuch es erneut.')}</div>
           <div className="challenge-help">Verlasse das leuchtende Feld und fahre erneut hinein, um es wieder zu versuchen.</div>
         </>}
       </div>}
@@ -187,14 +197,26 @@ export default function App(){
       <Control router={router} action="left" label="Links">←</Control><Control router={router} action="back" label="Rückwärts">↓</Control><Control router={router} action="right" label="Rechts">→</Control></div></div>
       <div className="controls right"><button className="ctrl reset" aria-label="Zurücksetzen" onClick={()=>{router.clearAll();controls.current.reset=true;}}>↺</button>
       <RidePad router={router}/></div>
-      <div className="hint">WASD / PFEILTASTEN · SHIFT BREMSEN · LEERTASTE WHEELIE · R RESET</div>
+      <div className="world-actions">
+        <button type="button" onClick={()=>openStudio('garage')} aria-label="Garage öffnen">🛠️ GARAGE</button>
+        <button type="button" onClick={()=>openStudio('home')} aria-label="Zuhause öffnen">🏠 ZUHAUSE</button>
+        <button type="button" onClick={()=>setView(v=>v==='third'?'first':'third')} data-testid="camera-toggle" aria-label="Kamera wechseln">{view==='first'?'👁️ 3RD':'👁️ 1ST'}</button>
+      </div>
+      {nearby&&!studio&&<div className="nearby-entry" role="status">
+        {nearby==='garage'?'🛠️ Garage':'🏠 Zuhause'} in der Nähe!
+        <button type="button" onClick={()=>openStudio(nearby)}>ÖFFNEN (E)</button>
+      </div>}
+      <div className="hint">WASD · V KAMERA · E GARAGE / ZUHAUSE · R RESET</div>
     </div>}
+    {started&&studio&&<SceneError><Suspense fallback={<div className="loading">STUDIO WIRD GELADEN …</div>}>
+      <Customizer room={studio} profile={profile} onChange={customize} onClose={closeStudio} message={studioMessage}/>
+    </Suspense></SceneError>}
     {!started&&!unsupported&&<div className="overlay"><div className="intro"><div className="eyebrow">OPEN WORLD SCOOTER GAME</div>
       <h1>FAHRE<br/>EIN <i>MURAT.</i></h1>
-      <p>Dein Scooter. Deine Straße. Dein Wald. Meistere Slalom und Wheelie-Challenges und verdiene Murat-Coins.</p>
+      <p>Dein Scooter. Deine Straße. Dein Wald. Meistere drei Challenges, suche den goldenen Schlüssel und gestalte Fahrer und Scooter.</p>
       <button className="start" onClick={begin}>JETZT FAHREN →</button>
       <p style={{fontSize:12,opacity:.7}}>PC: WASD / Pfeiltasten · Handy: Gas gedrückt halten und nach oben zum Wheelie wischen.</p>
-      <p style={{fontSize:11,opacity:.5}}>REACT THREE FIBER · VERSION 0.4</p>
+      <p style={{fontSize:11,opacity:.5}}>REACT THREE FIBER · VERSION 0.5</p>
     </div></div>}
     {unsupported&&<div className="startup-error" role="alert"><h2>WebGL ist in dieser Vorschau nicht verfügbar.</h2><p>Öffne im Codespace den Port 5173 mit „Open in Browser“ direkt in Safari, Chrome oder Edge.</p><button onClick={()=>location.reload()}>Erneut versuchen</button></div>}
   </>;

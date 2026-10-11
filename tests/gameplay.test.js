@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CHALLENGES, SLALOM_CONES, SLALOM_FINISH,
-  updateWheelie, createChallengeState, updateChallenges,
+  updateWheelie, createChallengeState, updateChallenges, nextTreasureIndex, TREASURE_SPAWNS,
 } from '../src/gameplay.js';
 
 test('holding wheelie increases front-wheel angle and eventually causes a fall', () => {
@@ -76,4 +76,62 @@ test('cannot re-trigger a challenge while standing in the same zone', () => {
   const p = { x: c.x, z: c.z, pitch: 0, speed: 0 };
   updateChallenges(state, p, p, .1, emit);
   assert.equal(events.filter(x => x.type === 'start').length, 1);
+});
+
+
+test('all challenge start zones are far apart',()=>{
+  const zones=Object.values(CHALLENGES);
+  assert.equal(zones.length,3);
+  for(let i=0;i<zones.length;i++)for(let j=i+1;j<zones.length;j++){
+    assert.ok(Math.hypot(zones[i].x-zones[j].x,zones[i].z-zones[j].z)>150);
+  }
+});
+
+test('wheelie can be completed again and again for another reward',()=>{
+  const {state,events,emit}=begin('wheelie');
+  const c=CHALLENGES.wheelie;
+  const inside={x:c.x,z:c.z,pitch:.44,speed:12};
+  const outside={x:c.x+50,z:c.z+50,pitch:0,speed:10};
+  for(let round=0;round<3;round++){
+    for(let i=0;i<21;i++)updateChallenges(state,inside,inside,.2,emit);
+    assert.equal(state.active,null);
+    assert.equal(events.filter(e=>e.type==='won').length,round+1);
+    updateChallenges(state,inside,outside,.02,emit);
+    updateChallenges(state,outside,inside,.02,emit);
+    assert.equal(state.active,'wheelie');
+  }
+});
+
+test('hidden treasure spawns elsewhere on each new run without a HUD hint',()=>{
+  const c=CHALLENGES.hunt;
+  const s=createChallengeState(),events=[];
+  const emit=e=>events.push(e);
+  const inside={x:c.x,z:c.z,pitch:0,speed:10,yaw:0};
+  const outside={x:c.x+55,z:c.z+35,pitch:0,speed:10,yaw:0};
+  updateChallenges(s,outside,inside,.02,emit,()=>.4);
+  const first=s.target;
+  assert.ok(TREASURE_SPAWNS.some(t=>t.x===first.x&&t.z===first.z));
+  updateChallenges(s,inside,inside,.2,emit,()=>.4);
+  const progress=events.find(e=>e.type==='progress');
+  assert.equal('distance' in progress,false);
+  assert.equal('bearing' in progress,false);
+  assert.equal('target' in progress,false);
+  const firstKey={...inside,x:first.x,z:first.z};
+  updateChallenges(s,inside,firstKey,.02,emit);
+  assert.equal(events.at(-1).type,'won');
+  updateChallenges(s,firstKey,outside,.02,emit);
+  updateChallenges(s,outside,inside,.02,emit,()=>.4);
+  const second=s.target;
+  assert.notDeepEqual(second,first);
+  assert.equal(events.filter(e=>e.type==='start'&&e.id==='hunt').length,2);
+});
+
+test('random treasure positions never repeat consecutively',()=>{
+  for(let old=0;old<TREASURE_SPAWNS.length;old++) {
+    for(const random of [()=>0,()=>.4,()=>.99999]){
+      const next=nextTreasureIndex(old,random);
+      assert.ok(next>=0&&next<TREASURE_SPAWNS.length);
+      assert.notEqual(next,old);
+    }
+  }
 });
