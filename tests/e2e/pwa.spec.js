@@ -40,7 +40,7 @@ test('service worker serves all lazy chunks so the game opens offline',async({pa
   await page.evaluate(async()=>{
     await navigator.serviceWorker.ready;
     const keys=await caches.keys();
-    if(!keys.some(key=>key.startsWith('murat-pwa-')))throw Error('PWA cache missing');
+    if(!keys.some(key=>key.startsWith('aliasaf-pwa-')))throw Error('PWA cache missing');
   });
   await page.context().setOffline(true);
   try{

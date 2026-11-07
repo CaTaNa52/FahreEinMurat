@@ -111,7 +111,7 @@ function Garage(){
       <Cuboid at={[side*4.35,2.45,-4.71]} size={[.8,1.9,.16]} color="#e0ecdb"/>
       <Cuboid at={[side*4, .75,-6.25]} size={[.23,1.5,.23]} color="#e0d0b4"/>
     </group>)}
-    <group position={[0,4.14,-4.87]}><BuildingLabel name="MURAT GARAGE" width={5.1} color="#57e8cb"/></group>
+    <group position={[0,4.14,-4.87]}><BuildingLabel name="ALIASAF GARAGE" width={5.1} color="#57e8cb"/></group>
     <Cuboid at={[0,.085,-7.5]} size={[8.8,.15,4.4]} color="#777d77"/>
     {[-1,1].map(side=><mesh key={'lamp'+side} position={[side*3.9,4.15,-4.88]}>
       <boxGeometry args={[.6,.13,.18]}/>

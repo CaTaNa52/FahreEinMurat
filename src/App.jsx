@@ -10,7 +10,7 @@ const Customizer = lazy(() => import('./Customizer.jsx'));
 class SceneError extends Component {
   constructor(props){super(props);this.state={error:null};}
   static getDerivedStateFromError(error){return {error};}
-  componentDidCatch(error,info){console.error('FahreEinMurat 3D:',error,info);}
+  componentDidCatch(error,info){console.error('AliAsaf-Scooter 3D:',error,info);}
   render(){return this.state.error?<div className="startup-error" role="alert"><h2>3D konnte nicht gestartet werden</h2><p>{this.state.error.message}</p><p>Öffne die Codespaces-Portvorschau direkt in Safari oder Chrome.</p><button onClick={()=>location.reload()}>Erneut versuchen</button></div>:this.props.children;}
 }
 function Control({ action, label, children, router, className='' }) {
@@ -245,7 +245,7 @@ export default function App(){
     const outcome=chooseUpgrade(profile,category,key,value);
     if(outcome.error){setStudioMessage(outcome.error);return;}
     setProfile(outcome.profile);
-    setStudioMessage(outcome.paid?'🪙 '+outcome.paid+' Murat-Coins ausgegeben.':'✓ Anpassung gespeichert.');
+    setStudioMessage(outcome.paid?'🪙 '+outcome.paid+' AliAsaf-Coins ausgegeben.':'✓ Anpassung gespeichert.');
   };
   const finishTutorial=()=>{
     markTutorialSeen(window.localStorage);
@@ -286,7 +286,7 @@ export default function App(){
     <InstallPrompt started={started}/>
     {started&&<div className="scene-host"><SceneError><Suspense fallback={<div className="loading">3D-WELT WIRD GELADEN …</div>}><GameCanvas controls={controls} quality={quality} onSpeed={onSpeed} onGameEvent={onGameEvent} cosmetics={profile} view={view} paused={!!studio||tutorialStep!==null} tutorialStep={tutorialStep}/></Suspense></SceneError></div>}
     {started&&<div id="hud">
-      <div id="top"><div className="brand">FAHRE EIN <em>MURAT.</em></div><div className="pill">🌲 FOREST FREERIDE</div><div className="wallet" data-testid="coins">🪙 {profile.coins.toLocaleString('de-DE')} MURAT-COINS</div></div>
+      <div id="top"><div className="brand">ALIASAF<em>-SCOOTER.</em></div><div className="pill">🌲 FOREST FREERIDE</div><div className="wallet" data-testid="coins">🪙 {profile.coins.toLocaleString('de-DE')} ALIASAF-COINS</div></div>
       <div className="speed"><strong data-testid="speed">{kmh}</strong> <span>KM/H</span><small>{reversing?'↩ RÜCKWÄRTS':'● FREERIDE + CHALLENGES'}</small></div>
       <div className="tip">Fahre in leuchtende Felder für Challenges. Wheelie: Leertaste gedrückt halten, rechtzeitig loslassen oder bremsen! Neben deinem Haus wartet das Freibad.</div>
       {challenge && <div className={`challenge-panel ${challenge.type}`} role="status" data-testid="challenge">
@@ -303,7 +303,7 @@ export default function App(){
             'Ein goldener Schlüssel ist irgendwo versteckt. Keine Pfeile, keine Entfernungsanzeige – erkunde die Welt und finde ihn!'} </div>
           {challenge.id==='wheelie'&&<div className="wheelie-angle">Radwinkel: <strong>{Math.round((challenge.pitch||0)*180/Math.PI)}°</strong> · Balance: 13–40° · Sturz: 50°</div>}
         </> : <><div className="challenge-title">{challenge.type==='won'?'🏆 GESCHAFFT!':challenge.type==='failed'?'✖ CHALLENGE GESCHEITERT':'💥 STURZ!'}</div>
-          <div className="challenge-help">{challenge.type==='won'?`+${challenge.reward.toLocaleString('de-DE')} Murat-Coins! Erneut spielbar.`:(challenge.reason||'Versuch es erneut.')}</div>
+          <div className="challenge-help">{challenge.type==='won'?`+${challenge.reward.toLocaleString('de-DE')} AliAsaf-Coins! Erneut spielbar.`:(challenge.reason||'Versuch es erneut.')}</div>
           <div className="challenge-help">Verlasse das leuchtende Feld und fahre erneut hinein, um es wieder zu versuchen.</div>
         </>}
       </div>}
@@ -351,7 +351,7 @@ export default function App(){
       <Customizer room={studio} profile={profile} onChange={customize} onClose={closeStudio} message={studioMessage}/>
     </Suspense></SceneError>}
     {!started&&!unsupported&&<div className="overlay"><div className="intro"><div className="eyebrow">OPEN WORLD SCOOTER GAME</div>
-      <h1>FAHRE<br/>EIN <i>MURAT.</i></h1>
+      <h1>ALIASAF<br/><i>SCOOTER.</i></h1>
       <p>Dein Scooter. Deine Straße. Dein Wald. Meistere drei Challenges, suche den goldenen Schlüssel und gestalte Fahrer und Scooter.</p>
       <button className="start" onClick={begin}>JETZT FAHREN →</button>
       <p style={{fontSize:12,opacity:.7}}>PC: WASD / Pfeiltasten · Handy: Gas gedrückt halten und nach oben zum Wheelie wischen.</p>

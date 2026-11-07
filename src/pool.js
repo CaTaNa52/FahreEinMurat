@@ -4,7 +4,7 @@ import { roadX, WORKSHOPS } from './gameplay.js';
 // Outdoor pool complex right next to the home (garden side, a little further along the road).
 // The basin is sunk into the ground: the ground plane gets a matching hole.
 export const POOL = {
-  id:'pool', name:'MURAT FREIBAD',
+  id:'pool', name:'ALIASAF FREIBAD',
   x:WORKSHOPS.home.x-10, z:184,   // basin centre
   w:18, d:12,                     // basin size (x / z) in metres
   waterY:-.16, floorShallow:-1.25, floorDeep:-2.6,

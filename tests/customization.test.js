@@ -53,3 +53,15 @@ test('upgrades can be applied to a legacy profile with missing fields',()=>{
   assert.equal(result.profile.rider.helmet,true);
   assert.equal(result.profile.coins,500);
 });
+
+test('saves from before the AliAsaf-Scooter rename are migrated, never lost',()=>{
+  const legacy={coins:3100,garage:{model:'sport'},rider:{watch:true},owned:['garage:model:sport']};
+  const storage={getItem:key=>key==='fahre-ein-murat-profile-v2'?JSON.stringify(legacy):null};
+  const profile=loadProfile(storage);
+  assert.equal(profile.coins,3100);
+  assert.equal(profile.garage.model,'sport');
+  assert.equal(profile.rider.watch,true);
+  // A save under the new key always wins over the legacy one.
+  const both={getItem:key=>key==='aliasaf-scooter-profile-v2'?JSON.stringify({coins:5}):key==='fahre-ein-murat-profile-v2'?JSON.stringify(legacy):null};
+  assert.equal(loadProfile(both).coins,5);
+});

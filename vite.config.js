@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 // Zero-dependency precache injection: includes every hashed Vite chunk (including
 // lazily loaded game/studio chunks) so the installed game remains usable offline.
 function pwaPrecache(){
-  return {name:'murat-offline-precache',apply:'build',async writeBundle(options,bundle){
+  return {name:'aliasaf-offline-precache',apply:'build',async writeBundle(options,bundle){
     const output=join(options.dir??'dist','sw.js');
     const source=await readFile(output,'utf8');
     const assets=['/','/index.html','/manifest.webmanifest',

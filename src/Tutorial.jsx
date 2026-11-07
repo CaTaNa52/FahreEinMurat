@@ -6,7 +6,7 @@ export default function Tutorial({step,onNext,onSkip}){
   const last=step===TUTORIAL_STEPS.length-1;
   return <div className="tour-overlay" role="dialog" aria-modal="true"
     aria-label="Spieleinführung" data-testid="tutorial">
-    <div className="tour-top"><span>FAHRE EIN MURAT · EINFÜHRUNG</span>
+    <div className="tour-top"><span>ALIASAF-SCOOTER · EINFÜHRUNG</span>
       <button type="button" onClick={onSkip} aria-label="Einführung überspringen">ÜBERSPRINGEN ✕</button>
     </div>
     <section className="tour-panel">

@@ -1,6 +1,10 @@
-# FAHRE EIN MURAT 🛴
+# ALIASAF-SCOOTER 🛴
 
 Ein browserbasiertes 3D-E-Scooter-Freeride-Spiel mit Third- und First-Person-Kamera, bewaldeter Welt, Fahrphysik, drei Challenges, Garage und Zuhause. Auf PC und Smartphone nutzbar.
+
+## Umbenennung
+
+Das Spiel hieß früher **FahreEinMurat**. Alte Spielstände (Coins, Garage, Zuhause, Tutorial-Status) und Offline-Caches werden beim ersten Start automatisch übernommen bzw. aufgeräumt.
 
 ## Architektur – wie ONEVERSE
 
@@ -64,11 +68,11 @@ Die mobile rechte Steuerfläche ist eine **Ein-Finger-Gestensteuerung**: Finger 
 
 Beim **ersten** Klick auf „JETZT FAHREN“ öffnet sich ein kurzes, vierstufiges 3D-Tutorial:
 1. Kamera zeigt auf **Zuhause**, wo Helm, Kleidung und Uhr angepasst werden.
-2. Kamera zeigt auf die **Murat-Garage**, wo Scooter-Modelle, Farben und Extras verändert werden.
+2. Kamera zeigt auf die **AliAsaf-Garage**, wo Scooter-Modelle, Farben und Extras verändert werden.
 3. Kamera zeigt die **Challenge-Zone**; leuchtende Felder starten Slalom, Wheelie und die versteckte Schlüsselsuche ohne Navigationshilfen.
 4. **Bedienung** auf Handy und PC sowie Umschalten der First-Person-Kamera.
 
-Die Steuerung ist währenddessen pausiert. **ÜBERSPRINGEN** beendet das Tutorial sofort, **WEITER** geht zur nächsten Station und **LOSFAHREN** startet das Spiel. Es erscheint nach dem Abschluss oder Überspringen nicht mehr automatisch und lässt sich jederzeit über **❔ HILFE** erneut starten. Dies wird unter `fahre-ein-murat-tutorial-seen-v1` lokal gespeichert.
+Die Steuerung ist währenddessen pausiert. **ÜBERSPRINGEN** beendet das Tutorial sofort, **WEITER** geht zur nächsten Station und **LOSFAHREN** startet das Spiel. Es erscheint nach dem Abschluss oder Überspringen nicht mehr automatisch und lässt sich jederzeit über **❔ HILFE** erneut starten. Dies wird unter `aliasaf-scooter-tutorial-seen-v1` lokal gespeichert.
 
 ## Tests / CI-Schutz
 
@@ -91,7 +95,7 @@ GitHub Actions startet bei jedem PR auf `main` und jedem Push auf `main`: **Unit
 
 ## Freibad, Rutschen und Schwimmen
 
-- **MURAT FREIBAD** direkt neben dem Zuhause: echtes, in den Boden eingelassenes 18 × 12 m Becken mit Fliesen, Bahnlinien, Lichtreflexen (Kaustik) am Boden, animierter Wasseroberfläche, Unterwasserlampen, Beckenrand, Leitern, Sprungbrett, Liegen, Sonnenschirmen, Bademeisterstuhl und Dusche. Nichtschwimmerbereich ≈ 1,1 m zur Straße hin, Schwimmerbereich ≈ 2,4 m.
+- **ALIASAF FREIBAD** direkt neben dem Zuhause: echtes, in den Boden eingelassenes 18 × 12 m Becken mit Fliesen, Bahnlinien, Lichtreflexen (Kaustik) am Boden, animierter Wasseroberfläche, Unterwasserlampen, Beckenrand, Leitern, Sprungbrett, Liegen, Sonnenschirmen, Bademeisterstuhl und Dusche. Nichtschwimmerbereich ≈ 1,1 m zur Straße hin, Schwimmerbereich ≈ 2,4 m.
 - **Zwei große Rutschen** vom 7,6 m hohen Rutschturm: die geschlossene rote **TURBO-SPIRALE** und die offene blaue **WELLENRUTSCHE** mit laufendem Wasserfilm. Am leuchtenden Ring neben dem Turm **E** drücken oder **RUTSCHEN** tippen; die Rutschen wechseln sich ab. Die Fahrt beschleunigt auf steilen Stücken und endet mit Platsch im Becken.
 - **Schwimmen:** Einfach ins Becken fahren oder rutschen. Gas = vorwärts kraulen, Bremse = zurück, Pfeile = drehen. Im Stand tritt die Figur Wasser. Der Scooter bleibt am Beckenrand geparkt. Am Rand **E** oder **RAUSKLETTERN** – zurück auf den Scooter. Das HUD zeigt die aktuelle Wassertiefe.
 - Kurze Tipps auf Gas/Bremse gehen nicht mehr verloren, auch wenn ein Frame länger dauert (Tap-Latch im Eingabe-Router). Shader werden beim Laden vorkompiliert, damit neue Gebäude beim ersten Anblick nicht ruckeln.
@@ -99,7 +103,7 @@ GitHub Actions startet bei jedem PR auf `main` und jedem Push auf `main`: **Unit
 
 ## Garage, Zuhause und Ich-Perspektive
 
-- **MURAT GARAGE:** Gebäude bei z = +74. 3D-Scooter per Finger/Maus drehen; Modelle City/Sport/Classic, Fahrzeug-, Akzent- und Lichtfarbe, Straßen-/Offroadreifen, Neon-Unterbodenbeleuchtung und Gepäckbox. Einige Extras kosten Murat-Coins, Farben sind kostenlos.
+- **ALIASAF GARAGE:** Gebäude bei z = +74. 3D-Scooter per Finger/Maus drehen; Modelle City/Sport/Classic, Fahrzeug-, Akzent- und Lichtfarbe, Straßen-/Offroadreifen, Neon-Unterbodenbeleuchtung und Gepäckbox. Einige Extras kosten AliAsaf-Coins, Farben sind kostenlos.
 - **ZUHAUSE:** Gebäude bei z = +158. Drehbarer 3D-Charakter mit Helm an/aus und Helmfarbe, Jacken-/Hosenfarbe, Armbanduhr an/aus und Uhrenfarbe.
 - **Zugriff:** in der Nähe des Gebäudes E drücken oder im HUD Garage/Zuhause anwählen. Der Scooter bleibt während des Konfigurierens stehen. Änderungen sind sofort an der Spielfigur und am Scooter sichtbar.
 - **Kameramodus:** V auf Tastatur oder Schaltfläche **👁️ 1ST / 3RD** auf Touchscreen. Wechselt zwischen First-Person und Verfolgerkamera.

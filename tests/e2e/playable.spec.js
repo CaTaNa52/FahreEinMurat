@@ -9,7 +9,7 @@ test('Start screen opens a rendered, playable 3D scene', async ({ page, isMobile
   const intro=page.getByRole('button',{name:'Einführung überspringen'});
   if(await intro.isVisible())await intro.click();
  await expect(page.getByTestId('speed')).toBeVisible();
- await expect(page.getByTestId('coins')).toContainText('MURAT-COINS');
+ await expect(page.getByTestId('coins')).toContainText('ALIASAF-COINS');
  await expect(page.getByRole('button', { name: 'Wheelie halten' })).toBeVisible();
  if (isMobile) {
    const gas = page.getByRole('button', { name: 'Gas', exact: true });

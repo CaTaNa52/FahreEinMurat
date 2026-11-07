@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { isStandalone, isAppleMobile } from '../src/pwa.js';
 const manifest=JSON.parse(readFileSync('public/manifest.webmanifest','utf8'));
 test('PWA manifest supports standalone full-screen home screen installation',()=>{
-  assert.equal(manifest.name,'Fahre Ein Murat – Scooter Open World');
+  assert.equal(manifest.name,'AliAsaf-Scooter – Scooter Open World');
   assert.equal(manifest.start_url,'/');
   assert.equal(manifest.scope,'/');
   assert.equal(manifest.display,'standalone');

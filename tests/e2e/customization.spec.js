@@ -23,7 +23,7 @@ test('garage and home show rotating 3D models with saved custom colors',async({p
   page.on('pageerror',e=>errors.push(e.message));
   await launch(page);
   await page.getByRole('button',{name:'Garage öffnen'}).click();
-  const garage=page.getByRole('dialog',{name:'Murat Garage'});
+  const garage=page.getByRole('dialog',{name:'AliAsaf Garage'});
   await expect(garage).toBeVisible();
   await expect(garage.locator('canvas')).toBeVisible();
   await garage.getByRole('button',{name:'Scooter-Farbe #ff733d'}).click();

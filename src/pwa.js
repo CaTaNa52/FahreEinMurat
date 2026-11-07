@@ -1,5 +1,5 @@
 // Browser platform rules: installation always requires explicit user action.
-export const INSTALL_DISMISSED = 'murat-pwa-install-dismissed-session';
+export const INSTALL_DISMISSED = 'aliasaf-pwa-install-dismissed-session';
 export function isStandalone(win=window) {
   return !!(win.matchMedia?.('(display-mode: standalone)').matches ||
     win.navigator?.standalone === true);

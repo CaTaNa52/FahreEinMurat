@@ -6,7 +6,7 @@ export const CHALLENGES = {
   hunt: { id:'hunt', name:'GOLDENE SCHLÜSSELSUCHE', reward:1250, limit:120, x:roadX(-445), z:-445, radius:6 },
 };
 export const WORKSHOPS = {
-  garage: { x:roadX(74)+12, z:74, radius:9, name:'MURAT GARAGE' },
+  garage: { x:roadX(74)+12, z:74, radius:9, name:'ALIASAF GARAGE' },
   home: { x:roadX(158)-12, z:158, radius:9, name:'ZUHAUSE' },
 };
 export const PLACES = { ...CHALLENGES, ...WORKSHOPS };

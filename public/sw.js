@@ -1,10 +1,12 @@
-/* FahreEinMurat installable offline game shell.
+/* AliAsaf-Scooter installable offline game shell.
    Vite production build injects its exact hashed chunks into this list.
    In Vite dev the placeholder remains, enabling network-first previews. */
 const PRECACHE = '__PRECACHE_MANIFEST__';
 const ASSETS = Array.isArray(PRECACHE) ? PRECACHE : ['/', '/index.html','/manifest.webmanifest','/icons/icon-192.png','/icons/icon-512.png'];
 const VERSION = '__PRECACHE_VERSION__';
-const CACHE = 'murat-pwa-' + VERSION;
+const CACHE = 'aliasaf-pwa-' + VERSION;
+// Caches from before the rename are cleaned up as well.
+const CACHE_PREFIXES = ['aliasaf-pwa-', 'murat-pwa-'];
 const APP_ORIGIN = self.location.origin;
 self.addEventListener('install', event => {
   event.waitUntil((async()=>{
@@ -16,7 +18,7 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil((async()=>{
     const names=await caches.keys();
-    await Promise.all(names.filter(name=>name.startsWith('murat-pwa-')&&name!==CACHE).map(name=>caches.delete(name)));
+    await Promise.all(names.filter(name=>CACHE_PREFIXES.some(prefix=>name.startsWith(prefix))&&name!==CACHE).map(name=>caches.delete(name)));
     await self.clients.claim();
   })());
 });
@@ -34,7 +36,7 @@ self.addEventListener('fetch', event=>{
         return response;
       }catch{
         return await caches.match('/') || await caches.match('/index.html') ||
-          new Response('FahreEinMurat ist offline noch nicht vollständig gespeichert.',{
+          new Response('AliAsaf-Scooter ist offline noch nicht vollständig gespeichert.',{
             status:503,headers:{'content-type':'text/plain;charset=utf-8'}
           });
       }

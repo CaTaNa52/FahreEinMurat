@@ -1,12 +1,12 @@
 {
-  "name": "FahreEinMurat React Three Fiber",
+  "name": "AliAsaf-Scooter React Three Fiber",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
   "forwardPorts": [
     5173
   ],
   "portsAttributes": {
     "5173": {
-      "label": "FahreEinMurat",
+      "label": "AliAsaf-Scooter",
       "onAutoForward": "notify"
     }
   },

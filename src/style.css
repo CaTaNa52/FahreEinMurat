@@ -25,7 +25,7 @@ body{position:fixed;inset:0;-webkit-touch-callout:none;-webkit-user-select:none}
 .startup-error button{border:0;background:#c8ff57;color:#102015;padding:14px 24px;border-radius:13px;font-weight:800}
 
 
-/* Timed challenges and local Murat-Coins economy */
+/* Timed challenges and local AliAsaf-Coins economy */
 #top{flex-wrap:wrap;max-width:calc(100% - 220px)}
 .wallet{display:flex;align-items:center;background:#1a2416d9;backdrop-filter:blur(14px);border:1px solid #ffdf765d;color:#ffe492;border-radius:14px;padding:10px 13px;font-size:12px;font-weight:900;letter-spacing:.045em;white-space:nowrap;text-shadow:0 1px 7px #0009}
 .challenge-panel{position:absolute;top:110px;left:50%;transform:translateX(-50%);width:min(400px,calc(100vw - 32px));padding:15px 18px 16px;background:#0a201deb;box-shadow:0 12px 36px #0008;border:1px solid #bfff5999;border-radius:20px;text-align:center;backdrop-filter:blur(14px);pointer-events:none}
