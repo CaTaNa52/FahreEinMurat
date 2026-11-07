@@ -83,6 +83,20 @@ GitHub Actions startet bei jedem PR auf `main` und jedem Push auf `main`: **Unit
 - **Unterbodenbeleuchtung:** In der Garage Neon aktivieren und Farbe wählen. LED-Leisten sitzen am Deck; ein weicher, auslaufender Halo erscheint auf der Straße. Eine **nach unten gerichtete Spotlichtquelle** beleuchtet nur Boden und niedrige Gegenstände unter dem Scooter. Die bisherige omnidirektionale Punktbeleuchtung (die auch den Fahrer und Oberseiten bestrahlte) wurde entfernt. 
 - Die Darstellung ist für Desktop und mobile Browser ausgelegt. Straßenlaternen nutzen auf mobilen Geräten überwiegend selbstleuchtende Materialien statt vieler teurer dynamischer Lichtquellen.
 
+## Polizeistation
+
+- Zweistöckige **Polizeiwache** an der Hauptstraße (Ostseite, auf Höhe z = -120) mit Glaseingang, Vordach, beleuchtetem POLIZEI-Schild, klassischer blauer Polizeilampe, Funkmast mit Warnlicht und wehender Deutschlandfahne.
+- Eigener **Parkplatz** mit Markierungen, Pollern und drei Streifenwagen, zwei davon mit blinkendem Blaulicht.
+- Gebäude, Fahnenmast und Streifenwagen sind feste Hindernisse; der Parkplatz ist befahrbar.
+
+## Freibad, Rutschen und Schwimmen
+
+- **MURAT FREIBAD** direkt neben dem Zuhause: echtes, in den Boden eingelassenes 18 × 12 m Becken mit Fliesen, Bahnlinien, Lichtreflexen (Kaustik) am Boden, animierter Wasseroberfläche, Unterwasserlampen, Beckenrand, Leitern, Sprungbrett, Liegen, Sonnenschirmen, Bademeisterstuhl und Dusche. Nichtschwimmerbereich ≈ 1,1 m zur Straße hin, Schwimmerbereich ≈ 2,4 m.
+- **Zwei große Rutschen** vom 7,6 m hohen Rutschturm: die geschlossene rote **TURBO-SPIRALE** und die offene blaue **WELLENRUTSCHE** mit laufendem Wasserfilm. Am leuchtenden Ring neben dem Turm **E** drücken oder **RUTSCHEN** tippen; die Rutschen wechseln sich ab. Die Fahrt beschleunigt auf steilen Stücken und endet mit Platsch im Becken.
+- **Schwimmen:** Einfach ins Becken fahren oder rutschen. Gas = vorwärts kraulen, Bremse = zurück, Pfeile = drehen. Im Stand tritt die Figur Wasser. Der Scooter bleibt am Beckenrand geparkt. Am Rand **E** oder **RAUSKLETTERN** – zurück auf den Scooter. Das HUD zeigt die aktuelle Wassertiefe.
+- Kurze Tipps auf Gas/Bremse gehen nicht mehr verloren, auch wenn ein Frame länger dauert (Tap-Latch im Eingabe-Router). Shader werden beim Laden vorkompiliert, damit neue Gebäude beim ersten Anblick nicht ruckeln.
+- Startpunkte zum Testen: `?spawn=pool`, `?spawn=poolside`, `?spawn=police`.
+
 ## Garage, Zuhause und Ich-Perspektive
 
 - **MURAT GARAGE:** Gebäude bei z = +74. 3D-Scooter per Finger/Maus drehen; Modelle City/Sport/Classic, Fahrzeug-, Akzent- und Lichtfarbe, Straßen-/Offroadreifen, Neon-Unterbodenbeleuchtung und Gepäckbox. Einige Extras kosten Murat-Coins, Farben sind kostenlos.
@@ -126,7 +140,10 @@ src/
   InstallPrompt.jsx Browser-Installationsdialog / iOS-Hilfe
   pwa.js            Service-Worker-Registrierung und Plattformerkennung
   Underglow.jsx     Dynamische Neon-Beleuchtung
-  World.jsx         3D-Welt, Gebäude, Suche, Fahrsimulation
+  World.jsx         3D-Welt, Gebäude, Suche, Fahr-/Rutsch-/Schwimmsimulation
+  Pool.jsx          Freibad, Rutschen, Schwimmer-Animation, Splash-Effekt
+  pool.js           Becken-, Rutschen- und Schwimmregeln (testbar, ohne React)
+  PoliceStation.jsx Polizeiwache, Parkplatz, Streifenwagen
   Models.jsx        Scooter- und Fahrermodell samt Kosmetik
   Customizer.jsx    3D-Konfigurator mit drehbarer Vorschau
   gameplay.js       Challenge-Regeln und zufällige Such-Spawns

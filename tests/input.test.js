@@ -138,3 +138,17 @@ test('unrelated keyboard inputs remain active during native touch release',()=>{
   router.setKey('KeyW','forward',false);
   assert.equal(controls.current.forward,false);
 });
+
+test('a tap shorter than one frame still reaches the game loop exactly once',async()=>{
+  const { createInputRouter, consumeFrameInput } = await import('../src/input.js');
+  const controls={current:{}};
+  const router=createInputRouter(controls);
+  router.setKey('KeyW','forward',true);
+  router.setKey('KeyW','forward',false);
+  assert.equal(controls.current.forward,false,'key already released');
+  assert.equal(consumeFrameInput(controls).forward,true,'next frame still sees the tap');
+  assert.equal(consumeFrameInput(controls).forward,false,'tap is consumed once');
+  router.setKey('KeyW','forward',true);
+  router.clearAll();
+  assert.equal(consumeFrameInput(controls).forward,false,'safety clear also drops pending taps');
+});
