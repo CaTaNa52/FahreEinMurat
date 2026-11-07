@@ -1,4 +1,5 @@
 import { roadX, WORKSHOPS } from './gameplay.js';
+import { POOL_DECK, POOL_OBSTACLES } from './pool.js';
 
 // Shared source of truth for visible world objects and the gameplay colliders.
 export const CROSSROADS = [-325, -175, 25, 288].map((z,i)=>({
@@ -61,11 +62,27 @@ export const SIGNALS = CROSSROADS.flatMap(j=>[-1,1].map((side)=>({
   id:j.id+'-light-'+side,x:j.x+side*7.9,z:j.z+(side===1?7:-7),side
 })));
 
+// Police station on the east side of the main road, with its own parking lot.
+// The main building faces the road (west); w runs along x, d along z.
+const policeZ=-120;
+export const POLICE = {id:'police',x:roadX(policeZ)+31,z:policeZ,w:12,d:18,label:'POLIZEI'};
+export const POLICE_LOT = {x:(roadX(policeZ)+5.6+POLICE.x-POLICE.w/2)/2,z:policeZ,
+  w:POLICE.x-POLICE.w/2-(roadX(policeZ)+5.6),d:24};
+export const POLICE_CARS = [-6.2,0,6.2].map((dz,i)=>({
+  id:'police-car-'+i,x:POLICE.x-POLICE.w/2-5.2,z:policeZ+dz,yaw:-Math.PI/2,lights:i!==1
+}));
+// Open areas where no trees may grow (they are drivable, so not obstacles).
+export const CLEARINGS = [POOL_DECK,POLICE_LOT];
+
 // Blocking geometry uses dimensions of the exact buildings rendered in 3D.
 // Open spaces (pavement, streets, spawn zones) are intentionally not blockers.
 export const OBSTACLES = [
   {id:'home',x:WORKSHOPS.home.x,z:WORKSHOPS.home.z,w:8.2,d:9.3},
   {id:'garage',x:WORKSHOPS.garage.x,z:WORKSHOPS.garage.z,w:10.3,d:9.2},
+  {id:POLICE.id,x:POLICE.x,z:POLICE.z,w:POLICE.w,d:POLICE.d},
+  {id:'police-flag',x:POLICE.x-POLICE.w/2-2,z:POLICE.z+POLICE.d/2+1.2,w:.4,d:.4},
+  ...POLICE_CARS.map(c=>({id:c.id,x:c.x,z:c.z,w:4.5,d:2.05})),
+  ...POOL_OBSTACLES,
   ...ALL_BUILDINGS.map(b=>({id:b.id,x:b.x,z:b.z,
     w:b.kind==='house'&&b.side!==0?b.depth:b.width,
     d:b.kind==='house'&&b.side!==0?b.width:b.depth})),

@@ -5,8 +5,13 @@ import { CHALLENGES, WORKSHOPS, SLALOM_CONES, SLALOM_FINISH, roadX, updateWheeli
 import { Scooter } from './Models.jsx';
 import { GroundUnderglow } from './Underglow.jsx';
 import { updateDriveSpeed } from './driving.js';
+import { consumeFrameInput } from './input.js';
 import { City } from './City.jsx';
-import { BENCHES, CROSSROADS, OBSTACLES, resolveWorldMovement, closestBench } from './worldLayout.js';
+import { BENCHES, CROSSROADS, OBSTACLES, CLEARINGS, POLICE_LOT, resolveWorldMovement, closestBench } from './worldLayout.js';
+import { POOL, SLIDES, SLIDE_ENTRY, SWIM, inWater, exitPoint, distanceToEdge, updateSwim, nearSlideEntry,
+  samplePath, pathLength, slideSpeed, waterDepth } from './pool.js';
+import { PoolComplex, Swimmer, Splash, groundWithPoolHole } from './Pool.jsx';
+import { PoliceStation } from './PoliceStation.jsx';
 
 const WORLD = 1200;
 const clamp = THREE.MathUtils.clamp;
@@ -18,7 +23,8 @@ function makeTrees(count) {
     do { x = (random() - .5) * (WORLD - 30); z = (random() - .5) * (WORLD - 30); attempts++; }
     while (attempts < 30 && (Math.abs(x - roadX(z)) < 13 || Math.hypot(x, z) < 18
       || OBSTACLES.some(b => Math.abs(x-b.x)<b.w/2+4&&Math.abs(z-b.z)<b.d/2+4)
-      || CROSSROADS.some(c => Math.abs(z-c.z)<10&&Math.abs(x-c.x)<c.length/2+6)));
+      || CROSSROADS.some(c => Math.abs(z-c.z)<10&&Math.abs(x-c.x)<c.length/2+6)
+      || CLEARINGS.some(c => Math.abs(x-c.x)<c.w/2+3&&Math.abs(z-c.z)<c.d/2+3)));
     trees.push({ x, z, scale: .65 + random() * 1.25, rot: random() * 6.283 });
   }
   return trees;
@@ -183,16 +189,49 @@ function ChallengeCourse({treasure}) {
 // A real point light illuminates nearby StandardMaterials, a radial shader gives
 // a broad soft bloom without expensive postprocessing on phones.
 
+// Optional ?spawn=pool|poolside|police start points (handy for playtests and sharing).
+function spawnPoint(){
+  let key=null;
+  try{key=new URLSearchParams(window.location.search).get('spawn');}catch{/* no location */}
+  if(key==='pool')return {x:SLIDE_ENTRY.x,z:SLIDE_ENTRY.z,yaw:-Math.PI/2};
+  if(key==='poolside')return {x:POOL.x,z:POOL.z-POOL.d/2-3.2,yaw:Math.PI};
+  if(key==='police')return {x:POLICE_LOT.x-4,z:POLICE_LOT.z,yaw:-Math.PI/2};
+  return {x:roadX(0),z:0,yaw:0};
+}
+const SLIDE_LENGTHS=SLIDES.map(s=>pathLength(s.points));
+
 function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, onBenchChange, quality }) {
   const group = useRef(), scooter = useRef(), rider = useRef(), glow = useRef();
-  const { camera } = useThree();
-  const player = useRef({ x: roadX(0), z: 0, yaw: 0, speed: 0, pitch: 0, pitchVel: 0, lean: 0, timer: 0, fallen: false, fallTime: 0, respawnZ: 0 });
+  const camera = useThree(state => state.camera);
+  const camTarget = useMemo(() => new THREE.Vector3(), []);
+  const spawn = useMemo(spawnPoint, []);
+  const player = useRef({ x: spawn.x, z: spawn.z, yaw: spawn.yaw, speed: 0, pitch: 0, pitchVel: 0, lean: 0, timer: 0, fallen: false, fallTime: 0, respawnZ: 0 });
   const challenge = useRef(createChallengeState());
   const nearest=useRef(null);
   const nearestBench=useRef(null);
   const seatRef=useRef(null);
   const [seat,setSeat]=useState(null);
   const proximityTimer=useRef(0);
+  // Water state machine: ride -> (drive in | slide) -> swim -> climb out -> ride.
+  const swimmer=useRef(), mode=useRef('ride');
+  const [modeView,setModeView]=useState('ride');
+  const swim=useRef({x:0,z:0,yaw:0,speed:0,stroke:0});
+  const motion=useRef({stroke:0,horizontal:0,pose:'swim'});
+  const slide=useRef({index:0,dist:0,speed:3});
+  const nextSlide=useRef(0);
+  const [splash,setSplash]=useState(null);
+  const poolFlags=useRef({slide:null,canExit:null,depth:null});
+  const setMode=(next,extra={})=>{
+    mode.current=next;setModeView(next);
+    onGameEvent({type:'pool',mode:next,...extra});
+  };
+  const enterWater=(x,z,yaw,speed,power)=>{
+    const sw=swim.current;
+    Object.assign(sw,{x,z,yaw,speed:Math.min(SWIM.topForward,Math.max(0,speed)),stroke:0});
+    motion.current.pose='swim';motion.current.horizontal=0;
+    setSplash({id:Date.now(),x,z,power});
+    setMode('swim');
+  };
   const grid = useMemo(() => {
     const cells = new Map();
     trees.forEach(t => { const key = Math.floor(t.x / 16) + ',' + Math.floor(t.z / 16); if (!cells.has(key)) cells.set(key, []); cells.get(key).push(t); });
@@ -200,17 +239,91 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, o
   }, [trees]);
   useFrame((_, frameDt) => {
     if(paused)return;
-    const dt = Math.min(frameDt, .05), p = player.current, c = input.current;
+    const dt = Math.min(frameDt, .05), p = player.current, raw = input.current;
+    const c = consumeFrameInput(input);
+    // One-shot flags are owned by the shared controls object, not the frame copy.
+    Object.defineProperty(c,'reset',{get:()=>raw.reset,set:v=>{raw.reset=v;}});
+    Object.defineProperty(c,'interact',{get:()=>raw.interact,set:v=>{raw.interact=v;}});
     const before = { x: p.x, z: p.z };
     if (c.reset) {
       failChallenge(challenge.current, 'Challenge abgebrochen.', onGameEvent);
       Object.assign(p, { x: roadX(0), z: 0, yaw: 0, speed: 0, pitch: 0, pitchVel: 0, lean: 0, fallen: false, fallTime: 0 });
       challenge.current.lastZone = null;
+      if(mode.current!=='ride')setMode('ride');
       if(seatRef.current){
         seatRef.current=null;setSeat(null);onBenchChange(null);
         onGameEvent({type:'benchSeat',seated:false});
       }
       c.reset = false;
+    }
+    if(mode.current!=='ride'){
+      // Keep the parked scooter upright where the rider left it.
+      group.current.position.set(p.x,.34,p.z);group.current.rotation.y=p.yaw;
+      scooter.current.rotation.set(0,0,0);
+      if(glow.current){glow.current.position.set(p.x,.067,p.z);glow.current.rotation.y=p.yaw;}
+    }
+    if(mode.current==='slide'){
+      const sl=slide.current, path=SLIDES[sl.index].points, len=SLIDE_LENGTHS[sl.index];
+      const at=samplePath(path,sl.dist/len);
+      sl.speed=slideSpeed(sl.speed,at.slope,dt);
+      sl.dist+=sl.speed*dt;
+      motion.current.pose='slide';
+      const pos=samplePath(path,sl.dist/len);
+      swimmer.current.position.set(pos.x,pos.y+.12,pos.z);
+      swimmer.current.rotation.set(0,pos.yaw,0);
+      const first=view==='first';
+      const behind=first?-.1:4.2;
+      camTarget.set(pos.x+Math.sin(pos.yaw)*behind,pos.y+(first?1.05:2.3),pos.z+Math.cos(pos.yaw)*behind);
+      camera.position.lerp(camTarget,1-Math.exp(-(first?14:6)*dt));
+      camera.lookAt(pos.x-Math.sin(pos.yaw)*6,pos.y+(first?.3:.4)-1.2,pos.z-Math.cos(pos.yaw)*6);
+      p.timer+=dt;if(p.timer>=.13){p.timer=0;onSpeed(sl.speed);}
+      if(sl.dist>=len){
+        const end=path[path.length-1],prev=path[path.length-2];
+        enterWater(end[0],end[2],Math.atan2(-(end[0]-prev[0]),-(end[2]-prev[2])),1.6,1.6);
+      }
+      c.interact=false;
+      return;
+    }
+    if(mode.current==='swim'){
+      const sw=updateSwim(swim.current,c,dt);
+      const m=motion.current;
+      m.stroke=sw.stroke;
+      m.horizontal=THREE.MathUtils.damp(m.horizontal,Math.abs(sw.speed)>.35?1:0,3.5,dt);
+      const bob=Math.sin(sw.stroke*Math.PI*2)*.03;
+      swimmer.current.position.set(sw.x,THREE.MathUtils.lerp(POOL.waterY-.98,POOL.waterY-.14,m.horizontal)+bob,sw.z);
+      swimmer.current.rotation.set(0,sw.yaw,0);
+      const canExit=distanceToEdge(sw.x,sw.z)<SWIM.exitReach;
+      if(c.interact){
+        c.interact=false;
+        if(canExit){
+          // Climb out over the nearest edge and get back onto the parked scooter.
+          const out=exitPoint(sw.x,sw.z);
+          const scooterNear=Math.hypot(p.x-out.x,p.z-out.z)<9;
+          if(!scooterNear){p.x=out.x;p.z=out.z;p.yaw=out.yaw;}
+          p.speed=0;p.pitch=0;p.pitchVel=0;p.lean=0;
+          setMode('ride');
+          return;
+        }
+      }
+      const first=view==='first';
+      const desired=first
+        ? camTarget.set(sw.x-Math.sin(sw.yaw)*.25,POOL.waterY+.28,sw.z-Math.cos(sw.yaw)*.25)
+        : camTarget.set(
+          // Chase cam stays over the basin/deck so slide tubes never block the view.
+          THREE.MathUtils.clamp(sw.x+Math.sin(sw.yaw)*4.6,POOL.x-POOL.w/2+1.1,POOL.x+POOL.w/2+1.5),
+          POOL.waterY+2.7,
+          THREE.MathUtils.clamp(sw.z+Math.cos(sw.yaw)*4.6,POOL.z-POOL.d/2-1.5,POOL.z+POOL.d/2+1.5));
+      camera.position.lerp(desired,1-Math.exp(-(first?12:5)*dt));
+      if(first)camera.lookAt(sw.x-Math.sin(sw.yaw)*8,POOL.waterY+.1,sw.z-Math.cos(sw.yaw)*8);
+      else camera.lookAt(sw.x,POOL.waterY+.2,sw.z);
+      const depth=Math.round(waterDepth(sw.x)*10)/10;
+      const f=poolFlags.current;
+      if(f.canExit!==canExit||f.depth!==depth){
+        f.canExit=canExit;f.depth=depth;
+        onGameEvent({type:'poolEdge',canExit,depth});
+      }
+      p.timer+=dt;if(p.timer>=.13){p.timer=0;onSpeed(sw.speed);}
+      return;
     }
     if (p.fallen) {
       p.fallTime += dt;
@@ -234,6 +347,15 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, o
       const resolved=resolveWorldMovement(before,target,OBSTACLES,.72);
       p.x=resolved.x;p.z=resolved.z;
       if(resolved.blocked)p.speed*=.28;
+      if(inWater(p.x,p.z,.3)){
+        // Rider jumps in; the scooter stays parked on the deck at the edge.
+        const out=exitPoint(p.x,p.z,1.1);
+        const entry={x:p.x,z:p.z,yaw:p.yaw,speed:p.speed};
+        p.x=out.x;p.z=out.z;p.speed=0;p.pitch=0;p.pitchVel=0;
+        failChallenge(challenge.current,'Ab ins Wasser – Challenge beendet.',onGameEvent);
+        enterWater(entry.x,entry.z,entry.yaw,entry.speed*.25,Math.min(2.2,.8+Math.abs(entry.speed)*.12));
+        return;
+      }
       const gx = Math.floor(p.x / 16), gz = Math.floor(p.z / 16);
       for (let ox = -1; ox <= 1; ox++) for (let oz = -1; oz <= 1; oz++) for (const tree of grid.get((gx + ox) + ',' + (gz + oz)) || []) {
         const dx = p.x - tree.x, dz = p.z - tree.z, dist = Math.hypot(dx, dz), radius = tree.scale * .38 + .45;
@@ -254,6 +376,13 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, o
       if(seatRef.current){
         seatRef.current=null;setSeat(null);onBenchChange(null);
         onGameEvent({type:'benchSeat',seated:false});c.interact=false;
+      }else if(nearSlideEntry(p.x,p.z)&&Math.abs(p.speed)<2.5&&!p.fallen){
+        slide.current={index:nextSlide.current,dist:0,speed:3};
+        nextSlide.current=(nextSlide.current+1)%SLIDES.length;
+        p.speed=0;p.pitch=0;p.pitchVel=0;c.interact=false;
+        failChallenge(challenge.current,'Ab auf die Rutsche – Challenge beendet.',onGameEvent);
+        setMode('slide',{slide:SLIDES[slide.current.index].name});
+        return;
       }else if(bench&&Math.abs(p.speed)<1.8&&!p.fallen){
         seatRef.current=bench;setSeat(bench);onBenchChange(bench);
         p.speed=0;p.pitch=0;p.pitchVel=0;p.lean=0;
@@ -276,8 +405,8 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, o
     }
     const first=view==='first';
     const desired = first
-      ? new THREE.Vector3(p.x-Math.sin(p.yaw)*.52,1.72+Math.sin(p.pitch)*.14,p.z-Math.cos(p.yaw)*.52)
-      : new THREE.Vector3(p.x+Math.sin(p.yaw)*6.9,3.8,p.z+Math.cos(p.yaw)*6.9);
+      ? camTarget.set(p.x-Math.sin(p.yaw)*.52,1.72+Math.sin(p.pitch)*.14,p.z-Math.cos(p.yaw)*.52)
+      : camTarget.set(p.x+Math.sin(p.yaw)*6.9,3.8,p.z+Math.cos(p.yaw)*6.9);
     camera.position.lerp(desired,1-Math.exp(-(first?12:5)*dt));
     if(first)camera.lookAt(p.x-Math.sin(p.yaw)*12,1.57+p.pitch*1.5,p.z-Math.cos(p.yaw)*12);
     else camera.lookAt(p.x,1.4+p.pitch*.4,p.z);
@@ -286,6 +415,11 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, o
       proximityTimer.current=0;
       const at=Object.entries(WORKSHOPS).find(([,place])=>Math.hypot(p.x-place.x,p.z-place.z)<place.radius+4)?.[0]??null;
       if(at!==nearest.current){nearest.current=at;onGameEvent({type:'near',place:at});}
+      const slideHere=nearSlideEntry(p.x,p.z)?SLIDES[nextSlide.current].name:null;
+      if(poolFlags.current.slide!==slideHere){
+        poolFlags.current.slide=slideHere;
+        onGameEvent({type:'slideNearby',slide:slideHere});
+      }
       const currentBench=seatRef.current||(Math.abs(p.speed)<1.8?closestBench(p.x,p.z,3.85):null);
       if(currentBench?.id!==nearestBench.current?.id){
         nearestBench.current=currentBench;
@@ -298,9 +432,13 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, o
     <group ref={group}>
       <group ref={scooter}>
         <Scooter riderRef={rider} options={cosmetics.garage} rider={cosmetics.rider}
-          showRider={view!=='first'&&!seat}/>
+          showRider={view!=='first'&&!seat&&modeView==='ride'}/>
       </group>
     </group>
+    <group ref={swimmer} visible={modeView!=='ride'&&!(view==='first'&&modeView==='swim')}>
+      <Swimmer rider={cosmetics.rider} motion={motion}/>
+    </group>
+    <Splash key={splash?.id??'none'} event={splash}/>
     {cosmetics.garage.underglow&&<GroundUnderglow forwardedRef={glow}
       tint={cosmetics.garage.glowColor??'#55ffcf'} quality={quality}/>}
   </>;
@@ -323,11 +461,22 @@ function TourCamera({step}){
   });
   return null;
 }
+// Compile every material once up front (ignores frustum culling) so new buildings
+// do not cause shader-compile hitches the first time they come into view.
+function ShaderWarmup(){
+  const gl=useThree(s=>s.gl),scene=useThree(s=>s.scene),camera=useThree(s=>s.camera);
+  useLayoutEffect(()=>{
+    try{gl.compile(scene,camera);}catch{/* best effort */}
+  },[gl,scene,camera]);
+  return null;
+}
 export default function World({ input, quality, onSpeed, onGameEvent, cosmetics, view, paused, tutorialStep=null }) {
   const count = quality === 'low' ? 600 : 1300;
   const trees = useMemo(() => makeTrees(count), [count]);
   const [treasure,setTreasure] = useState(null);
   const [seatedBench,setSeatedBench]=useState(null);
+  const ground = useMemo(() => groundWithPoolHole(WORLD), []);
+  useLayoutEffect(() => () => ground.dispose(), [ground]);
   const handleEvent = event => {
     if(event.id==='hunt') {
       if(event.type==='start')setTreasure(event.target);
@@ -339,11 +488,13 @@ export default function World({ input, quality, onSpeed, onGameEvent, cosmetics,
     <color attach="background" args={['#a4c8d0']}/><fog attach="fog" args={['#a4c8d0', 70, quality === 'low' ? 240 : 360]}/>
     <hemisphereLight args={['#e6f5ff', '#59704b', 2.1]}/>
     <directionalLight position={[-70, 115, -70]} intensity={2.7} color="#ffefd0" castShadow={quality === 'high'} shadow-mapSize={[1024,1024]} shadow-camera-left={-90} shadow-camera-right={90} shadow-camera-top={90} shadow-camera-bottom={-90}/>
-    <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[WORLD, WORLD]}/><meshStandardMaterial color="#577749" roughness={1}/></mesh>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} geometry={ground} receiveShadow><meshStandardMaterial color="#577749" roughness={1}/></mesh>
     <Road/><City quality={quality} seatedBench={seatedBench} rider={cosmetics.rider}/>
+    <PoliceStation/><PoolComplex quality={quality}/>
     <Forest trees={trees}/><ChallengeCourse treasure={treasure}/>
     <Driver input={input} trees={trees} onSpeed={onSpeed} onGameEvent={handleEvent}
       cosmetics={cosmetics} view={view} paused={paused} onBenchChange={setSeatedBench} quality={quality}/>
     <TourCamera step={tutorialStep}/>
+    <ShaderWarmup/>
   </>;
 }

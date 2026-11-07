@@ -10,6 +10,16 @@ export function gestureActions(origin, mode) {
   return { forward: true };
 }
 
+// Effective controls for one simulation frame: held actions plus taps that were
+// pressed and released since the previous frame. Consumes the taps.
+export function consumeFrameInput(controls) {
+  const c = controls.current, taps = c.taps || {};
+  const frame = { ...c };
+  for (const action of INPUT_ACTIONS) frame[action] = !!(c[action] || taps[action]);
+  c.taps = {};
+  return frame;
+}
+
 export function createInputRouter(controls) {
   const keyboard = new Map();
   const pointers = new Map();
@@ -33,8 +43,15 @@ export function createInputRouter(controls) {
   }
   function sync() {
     const all = [...keyboard.values(), ...pointers.values()];
-    for (const action of INPUT_ACTIONS)
-      controls.current[action] = all.some(flags => !!flags[action]);
+    for (const action of INPUT_ACTIONS) {
+      const next = all.some(flags => !!flags[action]);
+      // Latch rising edges so a tap shorter than one frame (slow phones, shader
+      // compile hitches) still reaches the game loop exactly once.
+      if (next && !controls.current[action]) {
+        controls.current.taps = { ...(controls.current.taps || {}), [action]: true };
+      }
+      controls.current[action] = next;
+    }
     for(const listener of [...listeners])listener();
   }
   function drop(id) {
@@ -119,6 +136,7 @@ export function createInputRouter(controls) {
       pointerInfo.clear();
       contacts.clear();
       sync();
+      controls.current.taps = {};
     },
     subscribe(listener) {
       listeners.add(listener);

@@ -303,3 +303,8 @@ button:focus-visible{outline:3px solid #d0ff65;outline-offset:3px}
   .ride-guide{display:none}
 }
 html,body,#root{ -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility }
+
+/* Pool / slide status reuses the bench pill, with a water-blue accent. */
+.pool-entry{border-color:#7fe3ff88;background:#0d2b3be8;color:#e9fbff}
+.pool-entry button{background:#7fe3ff;color:#0b2433}
+.pool-entry button:disabled{background:#2c4b5a;color:#9fc3d1;cursor:default}

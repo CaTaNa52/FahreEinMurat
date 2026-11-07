@@ -181,6 +181,10 @@ export default function App(){
   const [nearby,setNearby]=useState(null);
   const [nearBench,setNearBench]=useState(null);
   const [seated,setSeated]=useState(false);
+  const [poolMode,setPoolMode]=useState('ride');
+  const [slideNear,setSlideNear]=useState(null);
+  const [poolEdge,setPoolEdge]=useState({canExit:false,depth:null});
+  const [activeSlide,setActiveSlide]=useState(null);
   const [tutorialStep,setTutorialStep]=useState(null);
   const [quality,setQuality]=useState('high');
   const [kmh,setKmh]=useState(0);
@@ -198,6 +202,20 @@ export default function App(){
     }
     if(event.type==='benchNearby'){
       setNearBench(prev=>prev===event.benchId?prev:event.benchId);
+      return;
+    }
+    if(event.type==='pool'){
+      setPoolMode(event.mode);
+      if(event.mode==='slide')setActiveSlide(event.slide??null);
+      if(event.mode==='ride')setPoolEdge({canExit:false,depth:null});
+      return;
+    }
+    if(event.type==='slideNearby'){
+      setSlideNear(prev=>prev===event.slide?prev:event.slide);
+      return;
+    }
+    if(event.type==='poolEdge'){
+      setPoolEdge({canExit:event.canExit,depth:event.depth});
       return;
     }
     if(event.type==='benchSeat'){
@@ -255,7 +273,7 @@ export default function App(){
       }
       if(studio){if(e.code==='Escape')closeStudio();return;}
       const a=map[e.code];if(a){router.setKey(e.code,a,true);e.preventDefault();}if(e.code==='KeyR')controls.current.reset=true;if(e.code==='KeyV'&&!e.repeat)setView(v=>v==='third'?'first':'third');if(e.code==='KeyE'&&!e.repeat){
-        if(seated||(!nearby&&nearBench))controls.current.interact=true;
+        if(seated||poolMode==='swim'||(!nearby&&(nearBench||slideNear)))controls.current.interact=true;
         else if(nearby)openStudio(nearby);
       }if(e.code==='Enter'&&!started)begin();};
     const up=e=>{const a=map[e.code];if(a){router.setKey(e.code,a,false);e.preventDefault();}};
@@ -263,14 +281,14 @@ export default function App(){
     const hidden=()=>{if(document.hidden)router.clearAll();};
     addEventListener('keydown',down);addEventListener('keyup',up);addEventListener('blur',blur);document.addEventListener('visibilitychange',hidden);
     return()=>{removeEventListener('keydown',down);removeEventListener('keyup',up);removeEventListener('blur',blur);document.removeEventListener('visibilitychange',hidden);};
-  },[started,router,studio,nearby,nearBench,seated,tutorialStep]);
+  },[started,router,studio,nearby,nearBench,seated,tutorialStep,poolMode,slideNear]);
   return <>
     <InstallPrompt started={started}/>
     {started&&<div className="scene-host"><SceneError><Suspense fallback={<div className="loading">3D-WELT WIRD GELADEN …</div>}><GameCanvas controls={controls} quality={quality} onSpeed={onSpeed} onGameEvent={onGameEvent} cosmetics={profile} view={view} paused={!!studio||tutorialStep!==null} tutorialStep={tutorialStep}/></Suspense></SceneError></div>}
     {started&&<div id="hud">
       <div id="top"><div className="brand">FAHRE EIN <em>MURAT.</em></div><div className="pill">🌲 FOREST FREERIDE</div><div className="wallet" data-testid="coins">🪙 {profile.coins.toLocaleString('de-DE')} MURAT-COINS</div></div>
       <div className="speed"><strong data-testid="speed">{kmh}</strong> <span>KM/H</span><small>{reversing?'↩ RÜCKWÄRTS':'● FREERIDE + CHALLENGES'}</small></div>
-      <div className="tip">Fahre in leuchtende Felder für Challenges. Wheelie: Leertaste gedrückt halten, rechtzeitig loslassen oder bremsen!</div>
+      <div className="tip">Fahre in leuchtende Felder für Challenges. Wheelie: Leertaste gedrückt halten, rechtzeitig loslassen oder bremsen! Neben deinem Haus wartet das Freibad.</div>
       {challenge && <div className={`challenge-panel ${challenge.type}`} role="status" data-testid="challenge">
         {challenge.id && <div className="challenge-name">{CHALLENGES[challenge.id]?.name}</div>}
         {['start','progress'].includes(challenge.type) ? <>
@@ -301,7 +319,21 @@ export default function App(){
         <button type="button" onClick={()=>setView(v=>v==='third'?'first':'third')} data-testid="camera-toggle" aria-label="Kamera wechseln">{view==='first'?'👁️ 3RD':'👁️ 1ST'}</button>
         <button type="button" onClick={()=>{router.clearAll();setTutorialStep(0);}} aria-label="Einführung erneut ansehen">❔ HILFE</button>
       </div>
-      {(seated||nearBench)&&!studio&&tutorialStep===null&&<div className="bench-entry" role="status">
+      {poolMode==='swim'&&!studio&&tutorialStep===null&&<div className="bench-entry pool-entry" role="status" data-testid="swim-status">
+        <span>🏊 Du schwimmst{poolEdge.depth!=null?` · Tiefe ${poolEdge.depth.toLocaleString('de-DE')} m`:''}</span>
+        <button type="button" disabled={!poolEdge.canExit} aria-label="Aus dem Becken klettern"
+          onClick={()=>{router.clearAll();controls.current.interact=true;}}>
+          {poolEdge.canExit?'RAUSKLETTERN (E)':'ZUM RAND SCHWIMMEN'}
+        </button>
+      </div>}
+      {poolMode==='slide'&&<div className="bench-entry pool-entry" role="status" data-testid="slide-status">
+        <span>🛝 {activeSlide??'RUTSCHE'} – WUUUSCH!</span>
+      </div>}
+      {poolMode==='ride'&&slideNear&&!seated&&!studio&&tutorialStep===null&&<div className="bench-entry pool-entry" role="status">
+        <span>🛝 Wasserrutsche: {slideNear}</span>
+        <button type="button" aria-label="Rutschen" onClick={()=>{router.clearAll();controls.current.interact=true;}}>RUTSCHEN (E)</button>
+      </div>}
+      {(seated||nearBench)&&poolMode==='ride'&&!studio&&tutorialStep===null&&<div className="bench-entry" role="status">
         <span>{seated?'🪑 Du sitzt auf der Bank':'🪑 Sitzbank in der Nähe'}</span>
         <button type="button" aria-label={seated?'Von Bank aufstehen':'Auf Bank setzen'}
           onClick={()=>{router.clearAll();controls.current.interact=true;}}>
@@ -312,7 +344,7 @@ export default function App(){
         {nearby==='garage'?'🛠️ Garage':'🏠 Zuhause'} in der Nähe!
         <button type="button" onClick={()=>openStudio(nearby)}>ÖFFNEN (E)</button>
       </div>}
-      <div className="hint">WASD · V KAMERA · E GARAGE / ZUHAUSE · R RESET</div>
+      <div className="hint">WASD · V KAMERA · E GARAGE / ZUHAUSE / RUTSCHE · R RESET</div>
     </div>}
     {started&&tutorialStep!==null&&!studio&&<Tutorial step={tutorialStep} onNext={nextTutorial} onSkip={finishTutorial}/>}
     {started&&studio&&<SceneError><Suspense fallback={<div className="loading">STUDIO WIRD GELADEN …</div>}>
