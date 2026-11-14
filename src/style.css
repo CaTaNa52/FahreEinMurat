@@ -315,3 +315,120 @@ html,body,#root{ -webkit-font-smoothing:antialiased; text-rendering:optimizeLegi
 @keyframes logo-pop{from{transform:scale(.6) rotate(-8deg);opacity:0}to{transform:none;opacity:1}}
 @media(max-height:470px) and (orientation:landscape){.intro-logo{width:64px;margin-bottom:4px}}
 @media(prefers-reduced-motion:reduce){.intro-logo{animation:none}}
+/* ===== v1.0 SUNSET CITY: open-world HUD (minimap, damage, phone, banners) ===== */
+:root{--pink:#ff4fb0;--cyan:#35e0ff;--sun:#ffb347;--cash:#8dff7a;--night:#150f2bee}
+#top{flex-wrap:nowrap;align-items:flex-start;gap:12px}
+.top-info{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0}
+.brand{font-style:italic;letter-spacing:-.03em;text-shadow:0 0 18px #ff4fb099,0 2px 10px #000b}
+.brand em{color:var(--pink)}
+.minimap{width:132px;height:132px;flex-shrink:0;border-radius:50%;border:3px solid #ffffffd9;box-shadow:0 0 0 2px #0c1118,0 8px 26px #000a,0 0 22px #ff4fb055;overflow:hidden;background:#16202c}
+.minimap canvas{width:100%;height:100%;display:block}
+.wallet{background:#0d1a10d9;border-color:#8dff7a66;color:var(--cash);font-size:13px;font-style:italic;text-shadow:0 0 12px #8dff7a66,0 1px 6px #000c}
+.damage{display:flex;flex-direction:column;gap:4px;min-width:150px;background:var(--night);border:1px solid #35e0ff55;border-radius:12px;padding:7px 10px;font-size:10px;font-weight:900;letter-spacing:.1em;color:#d9f7ff}
+.damage-bar{height:7px;border-radius:9px;background:#ffffff22;overflow:hidden}
+.damage-bar>div{height:100%;border-radius:9px;background:linear-gradient(90deg,var(--cyan),#8dff7a);transition:width .25s ease}
+.damage.warn{border-color:#ffb34799;color:#ffe2b0}.damage.warn .damage-bar>div{background:linear-gradient(90deg,#ffb347,#ffe27a)}
+.damage.bad{border-color:#ff5a5aaa;color:#ffd0d0;animation:pulse-bad 1s ease-in-out infinite}.damage.bad .damage-bar>div{background:linear-gradient(90deg,#ff3b3b,#ff8a5a)}
+@keyframes pulse-bad{50%{box-shadow:0 0 18px #ff3b3b88}}
+.passenger{background:#2b1030e6;border:1px solid #ff4fb099;color:#ffd3ee;border-radius:12px;padding:6px 10px;font-size:10px;font-weight:900;letter-spacing:.08em;white-space:nowrap}
+.speed strong{font-style:italic;text-shadow:0 0 22px #35e0ff88,0 2px 14px #000a}
+.speed small{color:var(--sun)}
+/* big centre-screen announcements */
+.banner{position:absolute;top:34%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;z-index:6;width:min(92vw,720px);animation:banner-in .35s cubic-bezier(.2,1.4,.4,1) both}
+.banner strong{display:block;font-size:clamp(34px,8.5vw,84px);font-weight:1000;font-style:italic;letter-spacing:-.03em;line-height:.95;-webkit-text-stroke:2px #0c0818;paint-order:stroke fill;text-shadow:0 6px 0 #0c0818,0 10px 34px #000c}
+.banner span{display:inline-block;margin-top:12px;font-size:clamp(12px,2.2vw,17px);font-weight:900;letter-spacing:.08em;background:#0c0818d9;border-radius:10px;padding:7px 12px}
+.banner.won strong{color:#ffd84a}.banner.won span{color:var(--cash)}
+.banner.crash strong{color:#ff3b4f}.banner.crash span{color:#ffd0d0}
+.banner.hit strong{color:var(--sun);font-size:clamp(26px,6vw,56px)}.banner.hit span{color:#ffe2b0}
+@keyframes banner-in{from{opacity:0;transform:translate(-50%,-50%) scale(1.5)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+.scene-host{transition:filter .5s ease}
+.scene-host.wrecked{filter:grayscale(.85) contrast(1.1) brightness(.8)}
+/* phone messages from the buddy and people you talk to */
+.phone{position:absolute;right:max(16px,env(safe-area-inset-right));top:128px;width:min(320px,calc(100vw - 32px));display:flex;gap:10px;align-items:flex-start;background:var(--night);border:1px solid #ff4fb088;border-radius:18px 18px 4px 18px;padding:11px 13px;box-shadow:0 12px 34px #000a;z-index:5;animation:phone-in .3s ease both}
+.phone.call{border-color:var(--cyan);box-shadow:0 0 0 2px #35e0ff44,0 12px 34px #000a}
+.phone-avatar{width:38px;height:38px;flex-shrink:0;border-radius:50%;display:grid;place-items:center;font-weight:1000;font-size:17px;color:#1b0b22;background:linear-gradient(135deg,var(--pink),var(--sun))}
+.phone-from{font-size:9px;font-weight:900;letter-spacing:.14em;color:var(--cyan);margin-bottom:3px}
+.phone-text{font-size:13px;line-height:1.35;font-weight:650;color:#fff}
+@keyframes phone-in{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+.area-name{position:absolute;right:max(20px,env(safe-area-inset-right));bottom:236px;font-size:clamp(20px,3.6vw,38px);font-weight:900;font-style:italic;letter-spacing:.01em;color:#fff;text-shadow:0 0 18px #ff4fb0aa,0 3px 10px #000c;pointer-events:none;animation:area 4.2s ease both}
+@keyframes area{0%{opacity:0;transform:translateX(24px)}12%,78%{opacity:1;transform:none}100%{opacity:0}}
+.scene-fade{position:absolute;inset:0;background:#05040c;pointer-events:none;animation:fade-out .7s ease both}
+@keyframes fade-out{from{opacity:1}to{opacity:0}}
+.station-entry{border-color:#4aa3ff99;background:#0e2244ee;color:#e6f1ff}.station-entry button{background:#4aa3ff;color:#06162e}
+.buddy-entry{border-color:#ff4fb099;background:#2b1030ee;color:#ffe3f4}.buddy-entry button{background:var(--pink);color:#25061a}
+.nearby-entry .repair{background:var(--sun);color:#2a1700;margin-left:2px}
+.world-actions button{border-color:#ff4fb066;background:#1a1030e6;color:#ffe9f6}
+.world-actions button:active,.world-actions button:focus-visible{background:var(--pink);color:#1b0b22}
+/* start screen: sunset over the city */
+.overlay{background:linear-gradient(180deg,#2a1560 0%,#7a2e8e 34%,#ff5e8a 62%,#ffb347 84%,#2a1433 84.2%,#120a1f 100%)!important}
+.intro{text-shadow:0 2px 14px #0009}
+.intro .eyebrow{color:var(--cyan)!important;letter-spacing:.3em}
+.intro h1{font-style:italic;text-shadow:0 0 34px #ff4fb0cc,0 6px 0 #1b0b3a}
+.intro h1 i{color:var(--pink)}
+.start{background:linear-gradient(90deg,var(--pink),var(--sun))!important;color:#1b0b22!important;box-shadow:0 10px 34px #ff4fb066}
+@media(max-width:700px){
+  #top{flex-direction:row;gap:8px;max-width:calc(100% - 92px)}
+  .minimap{width:88px;height:88px;border-width:2px}
+  .top-info{gap:4px}
+  .wallet{font-size:10px}
+  .damage{min-width:118px;padding:5px 7px;font-size:8px}
+  .passenger{font-size:8px;padding:4px 7px}
+  .phone{top:112px;right:8px;width:min(270px,calc(100vw - 16px));padding:8px 10px}
+  .phone-text{font-size:11px}.phone-avatar{width:30px;height:30px;font-size:14px}
+  .banner{top:40%}
+  .area-name{bottom:254px;right:12px}
+  .challenge-panel{top:116px}
+}
+@media(max-height:470px) and (orientation:landscape){
+  .minimap{width:70px;height:70px}
+  .brand{display:none}
+  .damage{min-width:104px;padding:4px 6px}
+  .phone{top:58px;width:min(250px,40vw)}
+  .banner{top:42%}.banner strong{font-size:clamp(26px,9vh,48px)}
+  .area-name{bottom:118px;font-size:18px}
+  .challenge-panel{top:8px}
+}
+@media(prefers-reduced-motion:reduce){.banner,.phone,.area-name,.damage.bad{animation:none}}
+.tip{top:172px!important;left:24px!important;right:auto!important;bottom:auto!important;max-width:290px;transform:none!important}
+
+/* ===== Phone layout: nothing big over the road, nothing extra at the bottom ===== */
+@media(max-width:700px),(max-height:470px) and (orientation:landscape){
+  /* Running mission = one slim line: time + progress. No explanation window. */
+  .challenge-panel{top:calc(108px + env(safe-area-inset-top));width:auto;max-width:calc(100vw - 120px);padding:5px 10px;border-radius:999px;display:flex;align-items:center;gap:8px;white-space:nowrap;background:#150f2be6;box-shadow:0 4px 14px #0007}
+  .challenge-panel .challenge-name,.challenge-panel .challenge-help,.challenge-panel .wheelie-angle{display:none}
+  .challenge-panel .challenge-title{font-size:10px;letter-spacing:.04em}
+  .challenge-panel .challenge-stat{margin:0;gap:6px}
+  .challenge-panel .challenge-stat strong{font-size:15px}
+  .challenge-panel .challenge-stat span{font-size:9px}
+  .challenge-panel .challenge-meter{width:46px;height:5px;flex-shrink:0}
+  /* Won / crash are already announced by the short banner. Failed: reason as a small note. */
+  .challenge-panel.won,.challenge-panel.crash{display:none}
+  .challenge-panel.failed{flex-direction:column;align-items:flex-start;gap:1px;border-radius:14px;padding:6px 11px;white-space:normal}
+  .challenge-panel.failed .challenge-title + .challenge-help{display:block;margin:0;font-size:10px;line-height:1.25;text-align:left}
+  .banner{top:27%;width:min(88vw,420px)}
+  .banner strong{font-size:clamp(22px,7.4vw,34px);-webkit-text-stroke:1px #0c0818;text-shadow:0 3px 0 #0c0818,0 6px 18px #000c}
+  .banner.hit strong{font-size:clamp(18px,6vw,26px)}
+  .banner span{margin-top:6px;font-size:10px;padding:4px 8px}
+  /* Quick buttons leave the bottom: slim icon column on the right edge under the speed. */
+  .world-actions{bottom:auto;left:auto;transform:none;top:calc(84px + env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));flex-direction:column;gap:6px}
+  .world-actions button{width:40px;height:40px;min-width:0;min-height:0;padding:0;border-radius:12px;font-size:15px;display:grid;place-items:center;background:#1a1030b8}
+  .world-actions .wa-label{display:none}
+  .world-actions [data-testid="camera-toggle"]{font-size:9px;line-height:1.1}
+  /* Messages sit on the left under the status block, clear of the icon column. */
+  .phone{top:calc(142px + env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));right:auto;width:min(270px,calc(100vw - 64px));border-radius:16px 16px 16px 4px}
+  .area-name{right:56px;bottom:auto;top:calc(90px + env(safe-area-inset-top));font-size:16px}
+}
+@media(max-height:470px) and (orientation:landscape){
+  .world-actions{flex-direction:row;top:calc(6px + env(safe-area-inset-top));right:auto;left:calc(50% + 46px)}
+  .world-actions button{width:34px;height:34px;padding:0}
+  .challenge-panel{top:calc(46px + env(safe-area-inset-top));left:50%}
+  .phone{top:calc(84px + env(safe-area-inset-top));width:min(250px,40vw)}
+  .area-name{top:calc(50px + env(safe-area-inset-top));right:12px}
+}
+@media(max-width:700px){.brand{display:none}}
+@media(max-width:700px) and (min-height:471px){
+  /* The install button joins the icon column instead of covering the coins. */
+  .pwa-fab{left:auto;right:max(8px,env(safe-area-inset-right));transform:none;top:calc(84px + env(safe-area-inset-top));width:40px;padding:6px 0;font-size:8px;text-align:center}
+  .world-actions{top:calc(118px + env(safe-area-inset-top))}
+  .damage{min-width:0;width:100px}
+}

@@ -12,6 +12,16 @@ import { POOL, SLIDES, SLIDE_ENTRY, SWIM, inWater, exitPoint, distanceToEdge, up
   samplePath, pathLength, slideSpeed, waterDepth } from './pool.js';
 import { PoolComplex, Swimmer, Splash, groundWithPoolHole } from './Pool.jsx';
 import { PoliceStation } from './PoliceStation.jsx';
+import { PoliceInterior } from './PoliceInterior.jsx';
+import { Traffic } from './Traffic.jsx';
+import { Sky, Palms, makePalms, SUNSET, SUN_POSITION } from './Scenery.jsx';
+import { BuddyWaiting, Beacon } from './Buddy.jsx';
+import { Walker } from './Models.jsx';
+import { createTraffic, collideCar, closingSpeed } from './traffic.js';
+import { impactOutcome, wallOutcome, applyDamage, isTotaled, speedCap } from './crash.js';
+import { createBuddy, updateBuddy, buddyReact, BUDDY_LOOK, BUDDY_SPOTS } from './buddy.js';
+import { ROOM, STATION_DOOR, nearStationDoor, createWalk, updateWalk, interiorAction, stationLine } from './interior.js';
+import { DRIVE_LIMITS } from './driving.js';
 
 const WORLD = 1200;
 const clamp = THREE.MathUtils.clamp;
@@ -70,8 +80,8 @@ function Road() {
     dashRef.current.computeBoundingSphere();
   }, [dashes]);
   return <group>
-    <mesh geometry={geometry} receiveShadow><meshStandardMaterial color="#545e5c" roughness={1} side={THREE.DoubleSide}/></mesh>
-    <instancedMesh ref={dashRef} args={[undefined, undefined, dashes.length]}><boxGeometry args={[.16, .016, 2.5]}/><meshStandardMaterial color="#eadfc2"/></instancedMesh>
+    <mesh geometry={geometry} receiveShadow><meshStandardMaterial color="#454a50" roughness={1} side={THREE.DoubleSide}/></mesh>
+    <instancedMesh ref={dashRef} args={[undefined, undefined, dashes.length]}><boxGeometry args={[.18, .016, 2.6]}/><meshStandardMaterial color="#f2c230"/></instancedMesh>
   </group>;
 }
 function ZoneSign({ title, subtitle, color }) {
@@ -189,23 +199,75 @@ function ChallengeCourse({treasure}) {
 // A real point light illuminates nearby StandardMaterials, a radial shader gives
 // a broad soft bloom without expensive postprocessing on phones.
 
-// Optional ?spawn=pool|poolside|police start points (handy for playtests and sharing).
+// Optional ?spawn=pool|poolside|police|station|buddy start points (handy for playtests and sharing).
 function spawnPoint(){
   let key=null;
   try{key=new URLSearchParams(window.location.search).get('spawn');}catch{/* no location */}
   if(key==='pool')return {x:SLIDE_ENTRY.x,z:SLIDE_ENTRY.z,yaw:-Math.PI/2};
   if(key==='poolside')return {x:POOL.x,z:POOL.z-POOL.d/2-3.2,yaw:Math.PI};
   if(key==='police')return {x:POLICE_LOT.x-4,z:POLICE_LOT.z,yaw:-Math.PI/2};
+  if(key==='buddy')return {x:BUDDY_SPOTS[4].x+2.6,z:BUDDY_SPOTS[4].z+1.5,yaw:0,buddy:true};
+  if(key==='station')return {x:STATION_DOOR.x,z:STATION_DOOR.z+3.1,yaw:-Math.PI/2};
   return {x:roadX(0),z:0,yaw:0};
 }
 const SLIDE_LENGTHS=SLIDES.map(s=>pathLength(s.points));
+// District shown in the HUD corner when the rider enters a new part of the map.
+function areaName(x,z){
+  if(Math.hypot(x-POLICE_LOT.x,z-POLICE_LOT.z)<34)return 'POLIZEIWACHE';
+  if(Math.abs(x-POOL.x)<POOL.w/2+12&&Math.abs(z-POOL.z)<POOL.d/2+14)return 'ALIASAF FREIBAD';
+  if(Math.hypot(x-WORKSHOPS.garage.x,z-WORKSHOPS.garage.z)<26)return 'GARAGENHOF';
+  if(Math.abs(x-roadX(z))>70)return 'WALDGEBIET';
+  if(z<-300)return 'NORDVIERTEL';
+  if(z<-60)return 'INNENSTADT';
+  if(z<200)return 'WOHNVIERTEL';
+  return 'SÜDSTRAND';
+}
 
-function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, onBenchChange, quality }) {
+function Driver({ input, trees, cars, radar, onSpeed, onGameEvent, cosmetics, view, paused, onBenchChange, quality }) {
   const group = useRef(), scooter = useRef(), rider = useRef(), glow = useRef();
   const camera = useThree(state => state.camera);
   const camTarget = useMemo(() => new THREE.Vector3(), []);
   const spawn = useMemo(spawnPoint, []);
-  const player = useRef({ x: spawn.x, z: spawn.z, yaw: spawn.yaw, speed: 0, pitch: 0, pitchVel: 0, lean: 0, timer: 0, fallen: false, fallTime: 0, respawnZ: 0 });
+  const player = useRef({ x: spawn.x, z: spawn.z, yaw: spawn.yaw, speed: 0, pitch: 0, pitchVel: 0, lean: 0, timer: 0, fallen: false, fallTime: 0, respawnZ: 0,
+    damage: 0, crashes: 0, hitCooldown: 0, safe: 0, shake: 0, stay: false, totaled: false, wheelieTime: 0 });
+  // On foot inside the police station.
+  const walker=useRef(), walk=useRef(createWalk()), walkMotion=useRef({stride:0,speed:0});
+  const talkTurn=useRef({officer:0,inmate:0});
+  const snapCamera=useRef(false);
+  // The buddy who sometimes rides along.
+  const buddy=useRef(spawn.buddy?createBuddy(.5,[0,12]):createBuddy());
+  const [buddyView,setBuddyView]=useState({phase:'away',spot:null,dest:null});
+  const prompt=useRef(null), area=useRef(null);
+  const setPrompt=action=>{if(prompt.current!==action){prompt.current=action;onGameEvent({type:'prompt',action});}};
+  const syncBuddy=()=>{
+    const b=buddy.current;
+    setBuddyView({phase:b.phase,spot:b.spot,dest:b.dest});
+    Object.assign(radar.current,{buddy:b.phase==='waiting'?b.spot:null,dest:b.phase==='riding'?b.dest:null});
+  };
+  const say=text=>{if(text)onGameEvent({type:'buddy',text});};
+  // One place for every collision: grade it, damage the scooter, maybe throw the rider off.
+  const impact=(outcome,source)=>{
+    const p=player.current;
+    if(outcome.kind==='none'||p.fallen)return;
+    if(outcome.kind==='bump'){
+      if(p.hitCooldown<=0&&outcome.damage){p.damage=applyDamage(p.damage,outcome.damage);p.hitCooldown=.6;onGameEvent({type:'damage',value:p.damage});}
+      return;
+    }
+    if(outcome.kind==='hit'&&p.hitCooldown>0)return;
+    p.hitCooldown=.9;p.shake=outcome.kind==='crash'?1:.55;
+    p.damage=applyDamage(p.damage,outcome.damage);
+    onGameEvent({type:'damage',value:p.damage});
+    const totaled=isTotaled(p.damage);
+    if(outcome.kind==='crash'||totaled){
+      p.fallen=true;p.fallTime=0;p.speed=0;p.stay=true;p.totaled=totaled;p.crashes++;
+      failChallenge(challenge.current,totaled?'Totalschaden!':'Unfall!',onGameEvent);
+      onGameEvent({type:totaled?'totaled':'crash',source,damage:p.damage});
+      say(buddyReact(buddy.current,'crash'));
+    }else{
+      onGameEvent({type:'impact',source,damage:p.damage});
+      say(buddyReact(buddy.current,'hit'));
+    }
+  };
   const challenge = useRef(createChallengeState());
   const nearest=useRef(null);
   const nearestBench=useRef(null);
@@ -247,7 +309,8 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, o
     const before = { x: p.x, z: p.z };
     if (c.reset) {
       failChallenge(challenge.current, 'Challenge abgebrochen.', onGameEvent);
-      Object.assign(p, { x: roadX(0), z: 0, yaw: 0, speed: 0, pitch: 0, pitchVel: 0, lean: 0, fallen: false, fallTime: 0 });
+      Object.assign(p, { x: roadX(0), z: 0, yaw: 0, speed: 0, pitch: 0, pitchVel: 0, lean: 0, fallen: false, fallTime: 0, safe: 3, stay: false, totaled: false });
+      snapCamera.current=true;
       challenge.current.lastZone = null;
       if(mode.current!=='ride')setMode('ride');
       if(seatRef.current){
@@ -255,6 +318,49 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, o
         onGameEvent({type:'benchSeat',seated:false});
       }
       c.reset = false;
+    }
+    if(raw.repair){
+      // Paid for in the HUD; the garage hands back a scooter as good as new.
+      raw.repair=false;p.damage=0;onGameEvent({type:'damage',value:0});
+    }
+    p.hitCooldown=Math.max(0,p.hitCooldown-dt);p.safe=Math.max(0,p.safe-dt);
+    p.shake=Math.max(0,p.shake-dt*1.8);
+    Object.assign(radar.current,{x:p.x,z:p.z,yaw:p.yaw,mode:mode.current,slalom:challenge.current.active==='slalom'});
+    if(mode.current==='walk'){
+      // Inside the station: same controls, but on foot. The world above keeps running.
+      const w=updateWalk(walk.current,c,dt);
+      walkMotion.current.stride=w.stride;walkMotion.current.speed=w.speed;
+      walker.current.position.set(ROOM.x+w.x,ROOM.y,ROOM.z+w.z);
+      walker.current.rotation.set(0,w.yaw,0);
+      const action=interiorAction(w.x,w.z);
+      setPrompt(action?'station-'+action:null);
+      if(c.interact){
+        c.interact=false;
+        if(action==='exit'){
+          snapCamera.current=true;setPrompt(null);setMode('ride');
+          return;
+        }
+        if(action){
+          const turn=talkTurn.current[action]++;
+          onGameEvent({type:'talk',who:action,text:stationLine(action,{crashes:p.crashes,damage:p.damage},turn)});
+        }
+      }
+      const first=view==='first';
+      const limX=ROOM.w/2-.45,limZ=ROOM.d/2-.45;
+      const desired=first
+        ? camTarget.set(ROOM.x+w.x-Math.sin(w.yaw)*.15,ROOM.y+1.66,ROOM.z+w.z-Math.cos(w.yaw)*.15)
+        : (()=>{
+          // Chase cam stays inside the room; squeezed against a wall it rises instead.
+          const cx=clamp(w.x+Math.sin(w.yaw)*3.1,-limX,limX),cz=clamp(w.z+Math.cos(w.yaw)*3.1,-limZ,limZ);
+          const squeeze=Math.max(0,3.1-Math.hypot(cx-w.x,cz-w.z));
+          return camTarget.set(ROOM.x+cx,ROOM.y+Math.min(ROOM.h-.25,2.35+squeeze*.5),ROOM.z+cz);
+        })();
+      if(snapCamera.current){camera.position.copy(desired);snapCamera.current=false;}
+      else camera.position.lerp(desired,1-Math.exp(-(first?14:7)*dt));
+      if(first)camera.lookAt(ROOM.x+w.x-Math.sin(w.yaw)*6,ROOM.y+1.55,ROOM.z+w.z-Math.cos(w.yaw)*6);
+      else camera.lookAt(ROOM.x+w.x,ROOM.y+1.45,ROOM.z+w.z);
+      p.timer+=dt;if(p.timer>=.13){p.timer=0;onSpeed(w.speed);}
+      return;
     }
     if(mode.current!=='ride'){
       // Keep the parked scooter upright where the rider left it.
@@ -327,17 +433,25 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, o
     }
     if (p.fallen) {
       p.fallTime += dt;
-      if (p.fallTime > 2.15) {
+      if (p.fallTime > (p.totaled ? 3.4 : 2.15)) {
         p.fallen = false;
-        p.pitch = 0; p.pitchVel = 0; p.lean = 0; p.speed = 0;
-        p.z = p.respawnZ;
-        p.x = roadX(p.z);
-        p.yaw = 0;
+        p.pitch = 0; p.pitchVel = 0; p.lean = 0; p.speed = 0; p.safe = 3;
+        if (p.totaled) {
+          // Towed to the garage forecourt and repaired there.
+          p.x = WORKSHOPS.garage.x; p.z = WORKSHOPS.garage.z - 8.6; p.yaw = Math.PI / 2;
+          p.damage = 0; p.totaled = false; snapCamera.current = true;
+          onGameEvent({ type: 'damage', value: 0 });
+        } else if (!p.stay) {
+          p.z = p.respawnZ;
+          p.x = roadX(p.z);
+          p.yaw = 0;
+        }
+        p.stay = false;
         challenge.current.lastZone = null;
         onGameEvent({ type: 'respawn' });
       }
     } else if(!seatRef.current) {
-      p.speed = updateDriveSpeed(p.speed, c, dt);
+      p.speed = Math.min(updateDriveSpeed(p.speed, c, dt), speedCap(p.damage, DRIVE_LIMITS.topForward));
       const steer = Number(c.left) - Number(c.right);
       p.yaw += steer * Math.min(1.7, .7 + Math.abs(p.speed) * .075) * dt * Math.sign(p.speed || 1) * (1 - p.pitch * .42);
       const target={
@@ -346,36 +460,80 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, o
       };
       const resolved=resolveWorldMovement(before,target,OBSTACLES,.72);
       p.x=resolved.x;p.z=resolved.z;
-      if(resolved.blocked)p.speed*=.28;
+      if(resolved.blocked){
+        const hitSpeed=p.speed;
+        p.speed*=.28;
+        impact(wallOutcome(hitSpeed),'wall');
+        if(p.fallen)return;
+      }
+      // Traffic: get pushed out of the car, graded by how fast both closed in.
+      for(const car of cars){
+        const hit=collideCar(p.x,p.z,.72,car);
+        if(!hit)continue;
+        const closing=closingSpeed(hit,p.yaw,p.speed);
+        p.x+=hit.nx*hit.depth;p.z+=hit.nz*hit.depth;
+        if(p.safe>0)continue;
+        const outcome=impactOutcome(closing);
+        car.stun=Math.max(car.stun,outcome.kind==='bump'?.8:3);
+        if(outcome.kind==='bump')p.speed*=.6;else p.speed=-p.speed*.35;
+        impact(outcome,'car');
+        if(p.fallen)return;
+      }
       if(inWater(p.x,p.z,.3)){
         // Rider jumps in; the scooter stays parked on the deck at the edge.
         const out=exitPoint(p.x,p.z,1.1);
         const entry={x:p.x,z:p.z,yaw:p.yaw,speed:p.speed};
         p.x=out.x;p.z=out.z;p.speed=0;p.pitch=0;p.pitchVel=0;
         failChallenge(challenge.current,'Ab ins Wasser – Challenge beendet.',onGameEvent);
+        say(buddyReact(buddy.current,'swim'));
         enterWater(entry.x,entry.z,entry.yaw,entry.speed*.25,Math.min(2.2,.8+Math.abs(entry.speed)*.12));
         return;
       }
       const gx = Math.floor(p.x / 16), gz = Math.floor(p.z / 16);
       for (let ox = -1; ox <= 1; ox++) for (let oz = -1; oz <= 1; oz++) for (const tree of grid.get((gx + ox) + ',' + (gz + oz)) || []) {
         const dx = p.x - tree.x, dz = p.z - tree.z, dist = Math.hypot(dx, dz), radius = tree.scale * .38 + .45;
-        if (dist > .001 && dist < radius) { p.x = tree.x + dx / dist * radius; p.z = tree.z + dz / dist * radius; p.speed *= .7; }
+        if (dist > .001 && dist < radius) {
+          const hitSpeed = p.speed;
+          p.x = tree.x + dx / dist * radius; p.z = tree.z + dz / dist * radius; p.speed *= .7;
+          impact(wallOutcome(hitSpeed * .9), 'tree');
+        }
       }
+      if (p.fallen) return;
       p.lean = THREE.MathUtils.damp(p.lean, steer * Math.min(Math.abs(p.speed) / 20, 1) * .12, 5, dt);
       if (updateWheelie(p, c.wheelie && p.speed > 2, c.brake, dt)) {
         p.fallen = true; p.fallTime = 0; p.speed = 0;
         p.respawnZ = clamp(p.z + 12, -WORLD / 2 + 10, WORLD / 2 - 10);
         failChallenge(challenge.current, 'Gestürzt! Wheelie zu hoch.', onGameEvent);
-        onGameEvent({ type: 'crash' });
+        onGameEvent({ type: 'crash', source: 'wheelie' });
+        say(buddyReact(buddy.current,'crash'));
       } else {
         updateChallenges(challenge.current, before, p, dt, onGameEvent);
+        p.wheelieTime = p.pitch > .3 ? p.wheelieTime + dt : 0;
+        if (p.wheelieTime > 1.2) say(buddyReact(buddy.current,'wheelie'));
+        else if (p.speed > 20) say(buddyReact(buddy.current,'fast'));
       }
     }
+    // Buddy: texts, waits, hops on, gets dropped off.
+    const b=buddy.current,phaseBefore=b.phase;
+    const pickup=b.near&&!!c.interact&&!seatRef.current;
+    for(const event of updateBuddy(b,{x:p.x,z:p.z,speed:p.speed,interact:pickup,riding:!p.fallen&&!seatRef.current},dt)){
+      if(event.used)c.interact=false;
+      onGameEvent({type:'buddy',event:event.type,text:event.text,reward:event.reward??0,place:(event.spot??event.dest)?.name});
+    }
+    if(b.phase!==phaseBefore)syncBuddy();
+    const atDoor=nearStationDoor(p.x,p.z)&&Math.abs(p.speed)<3&&!p.fallen;
     const bench=closestBench(p.x,p.z,3.85);
     if(c.interact){
       if(seatRef.current){
         seatRef.current=null;setSeat(null);onBenchChange(null);
         onGameEvent({type:'benchSeat',seated:false});c.interact=false;
+      }else if(atDoor){
+        // Park the scooter by the entrance and walk in.
+        walk.current=createWalk();talkTurn.current={officer:0,inmate:0};
+        p.speed=0;p.pitch=0;p.pitchVel=0;p.lean=0;c.interact=false;snapCamera.current=true;
+        failChallenge(challenge.current,'Challenge beendet – du bist in der Wache.',onGameEvent);
+        setPrompt(null);setMode('walk');
+        return;
       }else if(nearSlideEntry(p.x,p.z)&&Math.abs(p.speed)<2.5&&!p.fallen){
         slide.current={index:nextSlide.current,dist:0,speed:3};
         nextSlide.current=(nextSlide.current+1)%SLIDES.length;
@@ -407,7 +565,12 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, o
     const desired = first
       ? camTarget.set(p.x-Math.sin(p.yaw)*.52,1.72+Math.sin(p.pitch)*.14,p.z-Math.cos(p.yaw)*.52)
       : camTarget.set(p.x+Math.sin(p.yaw)*6.9,3.8,p.z+Math.cos(p.yaw)*6.9);
-    camera.position.lerp(desired,1-Math.exp(-(first?12:5)*dt));
+    if(snapCamera.current){camera.position.copy(desired);snapCamera.current=false;}
+    else camera.position.lerp(desired,1-Math.exp(-(first?12:5)*dt));
+    if(p.shake>0){
+      // Impact shake: short, decaying, never enough to hide the road.
+      camera.position.x+=(Math.random()-.5)*p.shake*.5;camera.position.y+=(Math.random()-.5)*p.shake*.35;
+    }
     if(first)camera.lookAt(p.x-Math.sin(p.yaw)*12,1.57+p.pitch*1.5,p.z-Math.cos(p.yaw)*12);
     else camera.lookAt(p.x,1.4+p.pitch*.4,p.z);
     proximityTimer.current+=dt;
@@ -420,6 +583,9 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, o
         poolFlags.current.slide=slideHere;
         onGameEvent({type:'slideNearby',slide:slideHere});
       }
+      setPrompt(seatRef.current?null:buddy.current.near?'buddy-pickup':atDoor?'station-enter':null);
+      const here=areaName(p.x,p.z);
+      if(here!==area.current){area.current=here;onGameEvent({type:'area',name:here});}
       const currentBench=seatRef.current||(Math.abs(p.speed)<1.8?closestBench(p.x,p.z,3.85):null);
       if(currentBench?.id!==nearestBench.current?.id){
         nearestBench.current=currentBench;
@@ -432,10 +598,16 @@ function Driver({ input, trees, onSpeed, onGameEvent, cosmetics, view, paused, o
     <group ref={group}>
       <group ref={scooter}>
         <Scooter riderRef={rider} options={cosmetics.garage} rider={cosmetics.rider}
-          showRider={view!=='first'&&!seat&&modeView==='ride'}/>
+          showRider={view!=='first'&&!seat&&modeView==='ride'}
+          passenger={buddyView.phase==='riding'?BUDDY_LOOK:null}/>
       </group>
     </group>
-    <group ref={swimmer} visible={modeView!=='ride'&&!(view==='first'&&modeView==='swim')}>
+    <group ref={walker} visible={modeView==='walk'&&view!=='first'}>
+      <Walker options={cosmetics.rider} motion={walkMotion}/>
+    </group>
+    {buddyView.phase==='waiting'&&buddyView.spot&&<BuddyWaiting spot={buddyView.spot}/>}
+    {buddyView.phase==='riding'&&buddyView.dest&&<Beacon spot={buddyView.dest} color="#ffd84a"/>}
+    <group ref={swimmer} visible={(modeView==='swim'||modeView==='slide')&&!(view==='first'&&modeView==='swim')}>
       <Swimmer rider={cosmetics.rider} motion={motion}/>
     </group>
     <Splash key={splash?.id??'none'} event={splash}/>
@@ -470,12 +642,17 @@ function ShaderWarmup(){
   },[gl,scene,camera]);
   return null;
 }
-export default function World({ input, quality, onSpeed, onGameEvent, cosmetics, view, paused, tutorialStep=null }) {
+export default function World({ input, radar, quality, onSpeed, onGameEvent, cosmetics, view, paused, tutorialStep=null }) {
   const count = quality === 'low' ? 600 : 1300;
   const trees = useMemo(() => makeTrees(count), [count]);
+  const palms = useMemo(makePalms, []);
+  // Palms are solid too: they share the tree collision grid with a slim trunk.
+  const solids = useMemo(() => [...trees, ...palms.map(p => ({ x: p.x, z: p.z, scale: .2 }))], [trees, palms]);
+  const cars = useMemo(() => createTraffic(quality === 'low' ? 7 : 11, Math.random, spawnPoint().z), [quality]);
   const [treasure,setTreasure] = useState(null);
   const [seatedBench,setSeatedBench]=useState(null);
   const ground = useMemo(() => groundWithPoolHole(WORLD), []);
+  useLayoutEffect(() => { radar.current.cars = cars; }, [cars, radar]);
   useLayoutEffect(() => () => ground.dispose(), [ground]);
   const handleEvent = event => {
     if(event.id==='hunt') {
@@ -485,14 +662,16 @@ export default function World({ input, quality, onSpeed, onGameEvent, cosmetics,
     onGameEvent(event);
   };
   return <>
-    <color attach="background" args={['#a4c8d0']}/><fog attach="fog" args={['#a4c8d0', 70, quality === 'low' ? 240 : 360]}/>
-    <hemisphereLight args={['#e6f5ff', '#59704b', 2.1]}/>
-    <directionalLight position={[-70, 115, -70]} intensity={2.7} color="#ffefd0" castShadow={quality === 'high'} shadow-mapSize={[1024,1024]} shadow-camera-left={-90} shadow-camera-right={90} shadow-camera-top={90} shadow-camera-bottom={-90}/>
-    <mesh rotation={[-Math.PI / 2, 0, 0]} geometry={ground} receiveShadow><meshStandardMaterial color="#577749" roughness={1}/></mesh>
+    <color attach="background" args={[SUNSET.fog]}/><fog attach="fog" args={[SUNSET.fog, 70, quality === 'low' ? 240 : 360]}/>
+    <Sky/>
+    <hemisphereLight args={['#ffd9cf', '#5c6a55', 1.9]}/>
+    <directionalLight position={SUN_POSITION} intensity={2.9} color={SUNSET.sun} castShadow={quality === 'high'} shadow-mapSize={[1024,1024]} shadow-camera-left={-90} shadow-camera-right={90} shadow-camera-top={90} shadow-camera-bottom={-90}/>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} geometry={ground} receiveShadow><meshStandardMaterial color="#6a8452" roughness={1}/></mesh>
     <Road/><City quality={quality} seatedBench={seatedBench} rider={cosmetics.rider}/>
-    <PoliceStation/><PoolComplex quality={quality}/>
-    <Forest trees={trees}/><ChallengeCourse treasure={treasure}/>
-    <Driver input={input} trees={trees} onSpeed={onSpeed} onGameEvent={handleEvent}
+    <PoliceStation/><PoliceInterior/><PoolComplex quality={quality}/>
+    <Forest trees={trees}/><Palms palms={palms}/><ChallengeCourse treasure={treasure}/>
+    <Traffic cars={cars} radar={radar} paused={paused}/>
+    <Driver input={input} trees={solids} cars={cars} radar={radar} onSpeed={onSpeed} onGameEvent={handleEvent}
       cosmetics={cosmetics} view={view} paused={paused} onBenchChange={setSeatedBench} quality={quality}/>
     <TourCamera step={tutorialStep}/>
     <ShaderWarmup/>

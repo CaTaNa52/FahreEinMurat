@@ -6,6 +6,45 @@ Ein browserbasiertes 3D-E-Scooter-Freeride-Spiel mit Third- und First-Person-Kam
 
 Das Spiel hieß früher **FahreEinMurat**. Alte Spielstände (Coins, Garage, Zuhause, Tutorial-Status) und Offline-Caches werden beim ersten Start automatisch übernommen bzw. aufgeräumt.
 
+## Version 1.0 – Sunset City (Open-World-Umbau)
+
+Die Welt spielt jetzt bei Sonnenuntergang: Farbverlauf-Himmel mit Sonne, Palmenallee an der Hauptstraße, gelbe Mittellinie, Neon-HUD mit Minimap, großen Einblendungen und Handy-Nachrichten.
+
+### Verkehr
+- 11 Autos am PC, 7 auf dem Handy (Limousine, Sportwagen, Van, Taxi) fahren auf beiden Spuren der Hauptstraße, rechts wie in Deutschland.
+- Sie halten Abstand zueinander, bremsen mit Bremslicht für dich, wenn du in ihrer Spur bist, und warten an der gesperrten Slalom-Strecke, solange die Challenge läuft.
+- Auf der Minimap sind sie als weiße Punkte zu sehen.
+
+### Crashkonzept
+| Aufprall | Was passiert |
+|---|---|
+| Rempler (langsam) | kurzer Stoß, 2 % Schaden |
+| Treffer (mittel) | Scooter prallt zurück, Kamera wackelt, „RUMMS!“, Schaden je nach Tempo |
+| Crash (schnell) | Fahrer fliegt ab, Bild wird grau, „CRASH!“, hoher Schaden, Aufstehen an Ort und Stelle |
+| Totalschaden (100 %) | Abschleppdienst zur Garage, bis zu 250 Coins, Scooter danach wie neu |
+
+- Gilt für Autos (gemessen wird die Geschwindigkeit, mit der ihr aufeinander zufahrt), Wände, Laternen, Bänke, Bäume und Palmen. Der Wheelie-Sturz bleibt wie bisher.
+- Zustandsanzeige oben links: WIE NEU → KRATZER → ANGESCHLAGEN (ab 40 %, 12 % langsamer) → SCHROTTREIF (ab 70 %, 30 % langsamer).
+- **Reparieren:** an der Garage erscheint „🔧 REPARIEREN“, 2 Coins pro Schadenspunkt (nie mehr, als du hast).
+- Nach jedem Sturz bist du 3 Sekunden vor Autos geschützt. Der Schaden gilt für die laufende Sitzung und wird nicht gespeichert.
+
+### Kollege Murat
+- Meldet sich ab und zu per Handy-Nachricht („Holst du mich ab? Ich steh am CAFÉ.“) und wartet winkend an einem von neun Orten. Pinke Lichtsäule in der Welt, pinker Punkt **M** auf der Minimap.
+- Langsam neben ihm halten, **E** oder **AUFSTEIGEN LASSEN**: Er fährt hinten mit und nennt sein Ziel (gelbe Lichtsäule, gelber Punkt **Z**).
+- Unterwegs kommentiert er Tempo, Wheelies, Rempler und Crashs. Am Ziel langsam werden: Er steigt ab und zahlt 200–800 Coins je nach Strecke.
+- Wartet er 2,5 Minuten vergeblich, geht er zu Fuß und meldet sich später wieder.
+
+### Polizeiwache von innen
+- Vor dem Eingang halten (zwischen den Streifenwagen), **E** oder **REINGEHEN**. Der Scooter bleibt draußen stehen.
+- Drinnen läufst du zu Fuß: GAS/W = gehen, BREMSE/S = rückwärts, Pfeile = drehen, Kamera 1ST/3RD wie gewohnt.
+- Empfang mit Beamtem (kennt deine Unfälle des Tages), Schreibtisch, Spinde, Wartebank, Aushang, zwei Zellen: Zelle 1 ist offen und begehbar, in Zelle 2 sitzt jemand, mit dem du reden kannst.
+- Am grünen Ring beim Ausgang **E** oder **RAUSGEHEN**: zurück zum Scooter.
+
+### Minimap
+Runde Karte oben links, dreht sich mit der Fahrtrichtung: Straßen, Häuser, Freibad, Autos, **P** Polizei, **G** Garage, **H** Zuhause, ★ Challenges. Ziele außerhalb der Karte kleben am Rand und zeigen die Richtung.
+
+Startpunkte zum Ausprobieren: `?spawn=station` (vor der Wache), `?spawn=buddy` (Murat wartet direkt neben dir).
+
 ## Architektur – wie ONEVERSE
 
 - React 19 für Startbildschirm, Fahr-HUD und Touch-Bedienung
@@ -99,7 +138,7 @@ GitHub Actions startet bei jedem PR auf `main` und jedem Push auf `main`: **Unit
 - **Zwei große Rutschen** vom 7,6 m hohen Rutschturm: die geschlossene rote **TURBO-SPIRALE** und die offene blaue **WELLENRUTSCHE** mit laufendem Wasserfilm. Am leuchtenden Ring neben dem Turm **E** drücken oder **RUTSCHEN** tippen; die Rutschen wechseln sich ab. Die Fahrt beschleunigt auf steilen Stücken und endet mit Platsch im Becken.
 - **Schwimmen:** Einfach ins Becken fahren oder rutschen. Gas = vorwärts kraulen, Bremse = zurück, Pfeile = drehen. Im Stand tritt die Figur Wasser. Der Scooter bleibt am Beckenrand geparkt. Am Rand **E** oder **RAUSKLETTERN** – zurück auf den Scooter. Das HUD zeigt die aktuelle Wassertiefe.
 - Kurze Tipps auf Gas/Bremse gehen nicht mehr verloren, auch wenn ein Frame länger dauert (Tap-Latch im Eingabe-Router). Shader werden beim Laden vorkompiliert, damit neue Gebäude beim ersten Anblick nicht ruckeln.
-- Startpunkte zum Testen: `?spawn=pool`, `?spawn=poolside`, `?spawn=police`.
+- Startpunkte zum Testen: `?spawn=pool`, `?spawn=poolside`, `?spawn=police`, `?spawn=station`, `?spawn=buddy`.
 
 ## Garage, Zuhause und Ich-Perspektive
 
@@ -148,6 +187,15 @@ src/
   Pool.jsx          Freibad, Rutschen, Schwimmer-Animation, Splash-Effekt
   pool.js           Becken-, Rutschen- und Schwimmregeln (testbar, ohne React)
   PoliceStation.jsx Polizeiwache, Parkplatz, Streifenwagen
+  PoliceInterior.jsx Innenraum der Wache (Empfang, Zellen, Personen)
+  interior.js       Eingang, Raumplan, Laufen und Gespräche (testbar)
+  Traffic.jsx       Automodelle und Verkehrs-Rendering
+  traffic.js        Spurführung, Bremsen, Kollision Auto/Fahrer (testbar)
+  crash.js          Crash-Stufen, Schaden, Reparaturpreise (testbar)
+  Buddy.jsx         Wartender Kollege und Lichtsäulen
+  buddy.js          Ablauf Anruf → Abholen → Mitfahren → Absetzen (testbar)
+  Scenery.jsx       Sonnenuntergangs-Himmel und Palmen
+  Minimap.jsx       Radar-Karte im HUD
   Models.jsx        Scooter- und Fahrermodell samt Kosmetik
   Customizer.jsx    3D-Konfigurator mit drehbarer Vorschau
   gameplay.js       Challenge-Regeln und zufällige Such-Spawns

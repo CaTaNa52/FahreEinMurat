@@ -5,7 +5,7 @@ test('Start screen opens a rendered, playable 3D scene', async ({ page, isMobile
  await page.goto('/');
  await expect(page.getByRole('button', { name: /JETZT FAHREN/ })).toBeVisible();
  await page.getByRole('button', { name: /JETZT FAHREN/ }).click();
- await expect(page.locator('canvas')).toBeVisible({ timeout: 25000 });
+ await expect(page.locator('.scene-host canvas')).toBeVisible({ timeout: 25000 });
   const intro=page.getByRole('button',{name:'Einführung überspringen'});
   if(await intro.isVisible())await intro.click();
  await expect(page.getByTestId('speed')).toBeVisible();
