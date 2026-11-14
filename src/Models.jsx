@@ -1,3 +1,5 @@
+import { useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import { DEFAULT_GARAGE, DEFAULT_RIDER } from './customization.js';
 
 function Tire({z,offroad=false}) {
@@ -57,7 +59,7 @@ export function Rider({ options }) {
     </mesh>}
   </group>;
 }
-export function Scooter({ options, rider, riderRef, showRider=true }) {
+export function Scooter({ options, rider, riderRef, showRider=true, passenger=null }) {
   const safe={...DEFAULT_GARAGE,...(options&&typeof options==='object'?options:{})};
   const sport=safe.model==='sport';
   const classic=safe.model==='classic';
@@ -107,5 +109,45 @@ export function Scooter({ options, rider, riderRef, showRider=true }) {
       </mesh>
     </group>}
     {showRider&&<group ref={riderRef}><Rider options={rider}/></group>}
+    {/* The buddy rides pillion right behind the rider. */}
+    {passenger&&<group position={[0,0,.5]} scale={.95}><Rider options={passenger}/></group>}
+  </group>;
+}
+
+// Standing / walking figure (feet at y = 0, facing -z). `motion.current` =
+// {stride, speed} drives the walk cycle; `wave` raises the right arm to hail.
+export function Walker({ options, motion=null, wave=false, cap=null }) {
+  const safe={...DEFAULT_RIDER,...(options&&typeof options==='object'?options:{})};
+  const body=useRef(),armL=useRef(),armR=useRef(),legL=useRef(),legR=useRef();
+  useFrame(({clock})=>{
+    if(!body.current)return;
+    const m=motion?.current, pace=m?Math.min(1,Math.abs(m.speed)/2):0;
+    const swing=m?Math.sin(m.stride*Math.PI*2)*pace*.75:0;
+    legL.current.rotation.x=swing;legR.current.rotation.x=-swing;
+    armL.current.rotation.x=-swing*.8;
+    if(wave){
+      armR.current.rotation.set(0,0,2.55+Math.sin(clock.elapsedTime*6)*.32);
+    }else armR.current.rotation.set(swing*.8,0,0);
+    body.current.position.y=m?Math.abs(Math.cos(m.stride*Math.PI*2))*.035*pace:0;
+  });
+  const skin='#dbb995';
+  return <group ref={body}>
+    <mesh position={[0,1.17,0]} castShadow><capsuleGeometry args={[.25,.48,4,10]}/><meshStandardMaterial color={safe.jacket}/></mesh>
+    <mesh position={[0,1.7,0]} castShadow><sphereGeometry args={[.205,14,12]}/><meshStandardMaterial color={skin}/></mesh>
+    <mesh position={[0,1.69,-.19]}><boxGeometry args={[.2,.045,.04]}/><meshStandardMaterial color="#2a2320"/></mesh>
+    {cap?<group>
+      <mesh position={[0,1.84,0]}><cylinderGeometry args={[.215,.215,.13,14]}/><meshStandardMaterial color={cap}/></mesh>
+      <mesh position={[0,1.79,-.21]}><boxGeometry args={[.3,.035,.2]}/><meshStandardMaterial color="#10151c"/></mesh>
+    </group>:safe.helmet?<mesh position={[0,1.76,0]}><sphereGeometry args={[.235,14,12,0,Math.PI*2,0,Math.PI*.58]}/><meshStandardMaterial color={safe.helmetColor} roughness={.35}/></mesh>
+      :<mesh position={[0,1.76,.01]}><sphereGeometry args={[.215,14,12,0,Math.PI*2,0,Math.PI*.5]}/><meshStandardMaterial color="#2a2320" roughness={.9}/></mesh>}
+    {[[-1,armL],[1,armR]].map(([side,ref])=><group key={side} ref={ref} position={[side*.34,1.45,0]}>
+      <mesh position={[0,-.29,0]} castShadow><capsuleGeometry args={[.08,.44,4,8]}/><meshStandardMaterial color={safe.jacket}/></mesh>
+      <mesh position={[0,-.6,0]}><sphereGeometry args={[.085,8,8]}/><meshStandardMaterial color={skin}/></mesh>
+      {side===1&&safe.watch&&<mesh position={[0,-.5,0]}><cylinderGeometry args={[.095,.095,.06,10]}/><meshStandardMaterial color={safe.watchColor} metalness={.6} roughness={.25}/></mesh>}
+    </group>)}
+    {[[-1,legL],[1,legR]].map(([side,ref])=><group key={side} ref={ref} position={[side*.13,.88,0]}>
+      <mesh position={[0,-.42,0]} castShadow><capsuleGeometry args={[.095,.6,4,8]}/><meshStandardMaterial color={safe.pants}/></mesh>
+      <mesh position={[0,-.83,-.06]}><boxGeometry args={[.17,.1,.34]}/><meshStandardMaterial color="#e4dcc8"/></mesh>
+    </group>)}
   </group>;
 }

@@ -8,7 +8,7 @@ const center=async locator=>{
 async function start(page){
   await page.goto('/');
   await page.getByRole('button',{name:/JETZT FAHREN/}).click();
-  await expect(page.locator('canvas')).toBeVisible({timeout:25000});
+  await expect(page.locator('.scene-host canvas')).toBeVisible({timeout:25000});
   const intro=page.getByRole('button',{name:'Einführung überspringen'});
   if(await intro.isVisible())await intro.click();
   await expect(page.getByTestId('drive-pad')).toBeVisible();

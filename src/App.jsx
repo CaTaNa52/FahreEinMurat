@@ -5,6 +5,23 @@ import { loadProfile, PROFILE_KEY, chooseUpgrade } from './customization.js';
 import { TUTORIAL_STEPS, hasSeenTutorial, markTutorialSeen } from './tutorial.js';
 import Tutorial from './Tutorial.jsx';
 import InstallPrompt from './InstallPrompt.jsx';
+import Minimap from './Minimap.jsx';
+import { BUDDY_NAME } from './buddy.js';
+import { TOW_FEE, repairCost, damageLabel } from './crash.js';
+
+const PROMPTS={
+  'buddy-pickup':{icon:'🤝',text:BUDDY_NAME+' will mitfahren',button:'AUFSTEIGEN LASSEN (E)',label:'Kollegen aufsteigen lassen'},
+  'station-enter':{icon:'🚓',text:'Polizeiwache',button:'REINGEHEN (E)',label:'Polizeiwache betreten'},
+  'station-exit':{icon:'🚪',text:'Ausgang',button:'RAUSGEHEN (E)',label:'Polizeiwache verlassen'},
+  'station-officer':{icon:'👮',text:'Beamter am Empfang',button:'ANSPRECHEN (E)',label:'Beamten ansprechen'},
+  'station-inmate':{icon:'🔒',text:'Zelle 2',button:'ANSPRECHEN (E)',label:'Insassen ansprechen'},
+};
+const CRASH_TEXT={
+  car:'Du bist mit einem Auto zusammengestoßen.',
+  wall:'Zu schnell gegen ein Hindernis.',
+  tree:'Der Baum war stärker.',
+  wheelie:'Zu hoch! Du bist vom Scooter gefallen.',
+};
 const GameCanvas = lazy(() => import('./GameCanvas.jsx'));
 const Customizer = lazy(() => import('./Customizer.jsx'));
 class SceneError extends Component {
@@ -135,6 +152,8 @@ function RidePad({router}) {
 function supportsWebGL(){try{const canvas=document.createElement('canvas');return !!(canvas.getContext('webgl2')||canvas.getContext('webgl'));}catch{return false;}}
 export default function App(){
   const controls=useRef({forward:false,back:false,left:false,right:false,brake:false,wheelie:false,reset:false});
+  // Live positions for the minimap, written by the 3D world every frame.
+  const radar=useRef({x:0,z:0,yaw:0,mode:'ride',slalom:false,cars:[],buddy:null,dest:null});
   const routerRef=useRef(null);
   if(!routerRef.current)routerRef.current=createInputRouter(controls);
   const router=routerRef.current;
@@ -186,6 +205,18 @@ export default function App(){
   const [poolEdge,setPoolEdge]=useState({canExit:false,depth:null});
   const [activeSlide,setActiveSlide]=useState(null);
   const [tutorialStep,setTutorialStep]=useState(null);
+  const [prompt,setPrompt]=useState(null);
+  const [damage,setDamage]=useState(0);
+  const [phone,setPhone]=useState(null);
+  const [banner,setBanner]=useState(null);
+  const [area,setArea]=useState(null);
+  const [passenger,setPassenger]=useState(false);
+  const stamp=useRef(0);
+  const flash=(setter,value,ms)=>{
+    const id=++stamp.current;
+    setter({...value,id});
+    setTimeout(()=>setter(prev=>prev?.id===id?null:prev),ms);
+  };
   const [quality,setQuality]=useState('high');
   const [kmh,setKmh]=useState(0);
   const [reversing,setReversing]=useState(false);
@@ -222,12 +253,41 @@ export default function App(){
       setSeated(event.seated);
       return;
     }
+    if(event.type==='prompt'){setPrompt(event.action);return;}
+    if(event.type==='damage'){setDamage(event.value);return;}
+    if(event.type==='area'){flash(setArea,{name:event.name},4200);return;}
+    if(event.type==='talk'){
+      flash(setPhone,{from:event.who==='officer'?'Polizist':'Insasse',avatar:event.who==='officer'?'👮':'🔒',text:event.text},6500);
+      return;
+    }
+    if(event.type==='buddy'){
+      if(!event.text)return;
+      flash(setPhone,{from:BUDDY_NAME,avatar:'M',text:event.text,call:event.event==='call'},event.event==='call'?9000:5500);
+      if(event.event==='pickup')setPassenger(true);
+      if(event.event==='dropoff'){
+        setPassenger(false);
+        setProfile(prev=>({...prev,coins:prev.coins+event.reward}));
+        flash(setBanner,{kind:'won',title:'KOLLEGE ABGELIEFERT',sub:'+'+event.reward.toLocaleString('de-DE')+' AliAsaf-Coins'},4200);
+      }
+      return;
+    }
+    if(event.type==='impact'){
+      flash(setBanner,{kind:'hit',title:'RUMMS!',sub:'Scooter-Schaden '+Math.round(event.damage)+' %'},1600);
+      return;
+    }
+    if(event.type==='totaled'){
+      setProfile(prev=>({...prev,coins:Math.max(0,prev.coins-TOW_FEE)}));
+      flash(setBanner,{kind:'crash',title:'TOTALSCHADEN',sub:'Abschleppdienst zur Garage · bis zu −'+TOW_FEE+' Coins'},3600);
+      return;
+    }
     if(event.type==='won'){
       // Unlimited rewards: every successful attempt pays again.
       setProfile(prev=>({...prev,coins:prev.coins+CHALLENGES[event.id].reward}));
       setChallenge({...event,reward:CHALLENGES[event.id].reward});
+      flash(setBanner,{kind:'won',title:'MISSION GESCHAFFT',sub:'+'+CHALLENGES[event.id].reward.toLocaleString('de-DE')+' AliAsaf-Coins'},4200);
     } else if(event.type==='crash'){
-      setChallenge(prev=>prev?.type==='failed'?prev:{type:'crash',reason:'Zu hoch! Du bist vom Scooter gefallen.'});
+      flash(setBanner,{kind:'crash',title:'CRASH!',sub:CRASH_TEXT[event.source]??CRASH_TEXT.wheelie},2300);
+      setChallenge(prev=>prev?.type==='failed'?prev:{type:'crash',reason:CRASH_TEXT[event.source]??CRASH_TEXT.wheelie});
     } else if(event.type==='respawn'){
       setChallenge(prev=>prev?.type==='crash'?null:prev);
     } else {
@@ -235,6 +295,12 @@ export default function App(){
     }
   },[]);
   useEffect(()=>{try{localStorage.setItem(PROFILE_KEY,JSON.stringify(profile));}catch{/* no storage */}},[profile]);
+  // Results (won / failed / crash) are short notes, not windows: they leave by themselves.
+  useEffect(()=>{
+    if(!challenge||['start','progress'].includes(challenge.type))return undefined;
+    const timer=setTimeout(()=>setChallenge(prev=>prev===challenge?null:prev),3600);
+    return ()=>clearTimeout(timer);
+  },[challenge]);
   const openStudio=(room)=>{
     router.clearAll();
     setStudioMessage('');
@@ -246,6 +312,13 @@ export default function App(){
     if(outcome.error){setStudioMessage(outcome.error);return;}
     setProfile(outcome.profile);
     setStudioMessage(outcome.paid?'🪙 '+outcome.paid+' AliAsaf-Coins ausgegeben.':'✓ Anpassung gespeichert.');
+  };
+  const interact=()=>{router.clearAll();controls.current.interact=true;};
+  const repair=()=>{
+    const cost=Math.min(profile.coins,repairCost(damage));
+    setProfile(prev=>({...prev,coins:prev.coins-cost}));
+    controls.current.repair=true;
+    flash(setBanner,{kind:'won',title:'REPARIERT',sub:cost?'−'+cost.toLocaleString('de-DE')+' AliAsaf-Coins':'Geht aufs Haus'},2600);
   };
   const finishTutorial=()=>{
     markTutorialSeen(window.localStorage);
@@ -273,7 +346,7 @@ export default function App(){
       }
       if(studio){if(e.code==='Escape')closeStudio();return;}
       const a=map[e.code];if(a){router.setKey(e.code,a,true);e.preventDefault();}if(e.code==='KeyR')controls.current.reset=true;if(e.code==='KeyV'&&!e.repeat)setView(v=>v==='third'?'first':'third');if(e.code==='KeyE'&&!e.repeat){
-        if(seated||poolMode==='swim'||(!nearby&&(nearBench||slideNear)))controls.current.interact=true;
+        if(prompt||seated||poolMode==='swim'||poolMode==='walk'||(!nearby&&(nearBench||slideNear)))controls.current.interact=true;
         else if(nearby)openStudio(nearby);
       }if(e.code==='Enter'&&!started)begin();};
     const up=e=>{const a=map[e.code];if(a){router.setKey(e.code,a,false);e.preventDefault();}};
@@ -281,15 +354,27 @@ export default function App(){
     const hidden=()=>{if(document.hidden)router.clearAll();};
     addEventListener('keydown',down);addEventListener('keyup',up);addEventListener('blur',blur);document.addEventListener('visibilitychange',hidden);
     return()=>{removeEventListener('keydown',down);removeEventListener('keyup',up);removeEventListener('blur',blur);document.removeEventListener('visibilitychange',hidden);};
-  },[started,router,studio,nearby,nearBench,seated,tutorialStep,poolMode,slideNear]);
+  },[started,router,studio,nearby,nearBench,seated,tutorialStep,poolMode,slideNear,prompt]);
   return <>
     <InstallPrompt started={started}/>
-    {started&&<div className="scene-host"><SceneError><Suspense fallback={<div className="loading">3D-WELT WIRD GELADEN …</div>}><GameCanvas controls={controls} quality={quality} onSpeed={onSpeed} onGameEvent={onGameEvent} cosmetics={profile} view={view} paused={!!studio||tutorialStep!==null} tutorialStep={tutorialStep}/></Suspense></SceneError></div>}
+    {started&&<div className={'scene-host'+(banner?.kind==='crash'?' wrecked':'')}><SceneError><Suspense fallback={<div className="loading">3D-WELT WIRD GELADEN …</div>}><GameCanvas controls={controls} radar={radar} quality={quality} onSpeed={onSpeed} onGameEvent={onGameEvent} cosmetics={profile} view={view} paused={!!studio||tutorialStep!==null} tutorialStep={tutorialStep}/></Suspense></SceneError></div>}
     {started&&<div id="hud">
-      <div id="top"><div className="brand">ALIASAF<em>-SCOOTER.</em></div><div className="pill">🌲 FOREST FREERIDE</div><div className="wallet" data-testid="coins">🪙 {profile.coins.toLocaleString('de-DE')} ALIASAF-COINS</div></div>
-      <div className="speed"><strong data-testid="speed">{kmh}</strong> <span>KM/H</span><small>{reversing?'↩ RÜCKWÄRTS':'● FREERIDE + CHALLENGES'}</small></div>
-      <div className="tip">Fahre in leuchtende Felder für Challenges. Wheelie: Leertaste gedrückt halten, rechtzeitig loslassen oder bremsen! Neben deinem Haus wartet das Freibad.</div>
-      {challenge && <div className={`challenge-panel ${challenge.type}`} role="status" data-testid="challenge">
+      <div id="top"><Minimap radar={radar}/><div className="top-info"><div className="brand">ALIASAF<em>-SCOOTER.</em></div><div className="wallet" data-testid="coins">🪙 {profile.coins.toLocaleString('de-DE')} ALIASAF-COINS</div>
+        <div className={'damage'+(damage>=70?' bad':damage>=40?' warn':'')} data-testid="damage" role="status" aria-label={'Scooter-Zustand: '+damageLabel(damage)}>
+          <span>🛴 {damageLabel(damage)}</span><div className="damage-bar"><div style={{width:(100-damage)+'%'}}/></div>
+        </div>
+        {passenger&&<div className="passenger" data-testid="passenger">🤝 {BUDDY_NAME.toUpperCase()} FÄHRT MIT · ZIEL GELB</div>}
+      </div></div>
+      <div className="speed"><strong data-testid="speed">{kmh}</strong> <span>KM/H</span><small>{reversing?'↩ RÜCKWÄRTS':poolMode==='walk'?'● ZU FUSS':'● FREERIDE + CHALLENGES'}</small></div>
+      <div className="tip">Fahre in leuchtende Felder für Challenges. Achte auf den Verkehr: Crashs beschädigen den Scooter. Wenn {BUDDY_NAME} schreibt, hol ihn am pinken Punkt der Karte ab.</div>
+      {banner&&<div key={banner.id} className={'banner '+banner.kind} role="status" data-testid="banner"><strong>{banner.title}</strong><span>{banner.sub}</span></div>}
+      {phone&&<div key={phone.id} className={'phone'+(phone.call?' call':'')} role="status" data-testid="phone">
+        <div className="phone-avatar">{phone.avatar}</div>
+        <div><div className="phone-from">{phone.call?'📱 NEUE NACHRICHT · ':''}{phone.from.toUpperCase()}</div><div className="phone-text">{phone.text}</div></div>
+      </div>}
+      {area&&poolMode!=='walk'&&<div key={area.id} className="area-name" aria-hidden="true">{area.name}</div>}
+      {poolMode==='walk'&&<div key="fade-in" className="scene-fade"/>}
+      {challenge && <div className={`challenge-panel ${challenge.type}`+(['start','progress'].includes(challenge.type)?' live':' result')} role="status" data-testid="challenge">
         {challenge.id && <div className="challenge-name">{CHALLENGES[challenge.id]?.name}</div>}
         {['start','progress'].includes(challenge.type) ? <>
           <div className="challenge-title">{challenge.id==='slalom'?'SLALOM FAHREN!':challenge.id==='wheelie'?'WHEELIE BALANCIEREN!':'FIND DEN GOLDENEN SCHLÜSSEL!'}</div>
@@ -314,10 +399,10 @@ export default function App(){
       <div className="controls right"><button className="ctrl reset" aria-label="Zurücksetzen" onClick={()=>{router.clearAll();controls.current.reset=true;}}>↺</button>
       <RidePad router={router}/></div>
       <div className="world-actions">
-        <button type="button" onClick={()=>openStudio('garage')} aria-label="Garage öffnen">🛠️ GARAGE</button>
-        <button type="button" onClick={()=>openStudio('home')} aria-label="Zuhause öffnen">🏠 ZUHAUSE</button>
-        <button type="button" onClick={()=>setView(v=>v==='third'?'first':'third')} data-testid="camera-toggle" aria-label="Kamera wechseln">{view==='first'?'👁️ 3RD':'👁️ 1ST'}</button>
-        <button type="button" onClick={()=>{router.clearAll();setTutorialStep(0);}} aria-label="Einführung erneut ansehen">❔ HILFE</button>
+        <button type="button" onClick={()=>openStudio('garage')} aria-label="Garage öffnen">🛠️<span className="wa-label"> GARAGE</span></button>
+        <button type="button" onClick={()=>openStudio('home')} aria-label="Zuhause öffnen">🏠<span className="wa-label"> ZUHAUSE</span></button>
+        <button type="button" onClick={()=>setView(v=>v==='third'?'first':'third')} data-testid="camera-toggle" aria-label="Kamera wechseln">👁️<span className="wa-label"> </span>{view==='first'?'3RD':'1ST'}</button>
+        <button type="button" onClick={()=>{router.clearAll();setTutorialStep(0);}} aria-label="Einführung erneut ansehen">❔<span className="wa-label"> HILFE</span></button>
       </div>
       {poolMode==='swim'&&!studio&&tutorialStep===null&&<div className="bench-entry pool-entry" role="status" data-testid="swim-status">
         <span>🏊 Du schwimmst{poolEdge.depth!=null?` · Tiefe ${poolEdge.depth.toLocaleString('de-DE')} m`:''}</span>
@@ -329,11 +414,19 @@ export default function App(){
       {poolMode==='slide'&&<div className="bench-entry pool-entry" role="status" data-testid="slide-status">
         <span>🛝 {activeSlide??'RUTSCHE'} – WUUUSCH!</span>
       </div>}
-      {poolMode==='ride'&&slideNear&&!seated&&!studio&&tutorialStep===null&&<div className="bench-entry pool-entry" role="status">
+      {poolMode==='walk'&&!studio&&tutorialStep===null&&<div className="bench-entry station-entry" role="status" data-testid="station-status">
+        <span>{prompt&&PROMPTS[prompt]?PROMPTS[prompt].icon+' '+PROMPTS[prompt].text:'🚓 In der Polizeiwache · GAS = gehen'}</span>
+        {prompt&&PROMPTS[prompt]&&<button type="button" aria-label={PROMPTS[prompt].label} onClick={interact}>{PROMPTS[prompt].button}</button>}
+      </div>}
+      {poolMode==='ride'&&prompt&&PROMPTS[prompt]&&!seated&&!studio&&tutorialStep===null&&<div className={'bench-entry '+(prompt==='buddy-pickup'?'buddy-entry':'station-entry')} role="status" data-testid="action-prompt">
+        <span>{PROMPTS[prompt].icon} {PROMPTS[prompt].text}</span>
+        <button type="button" aria-label={PROMPTS[prompt].label} onClick={interact}>{PROMPTS[prompt].button}</button>
+      </div>}
+      {poolMode==='ride'&&slideNear&&!prompt&&!seated&&!studio&&tutorialStep===null&&<div className="bench-entry pool-entry" role="status">
         <span>🛝 Wasserrutsche: {slideNear}</span>
         <button type="button" aria-label="Rutschen" onClick={()=>{router.clearAll();controls.current.interact=true;}}>RUTSCHEN (E)</button>
       </div>}
-      {(seated||nearBench)&&poolMode==='ride'&&!studio&&tutorialStep===null&&<div className="bench-entry" role="status">
+      {(seated||nearBench)&&poolMode==='ride'&&!prompt&&!studio&&tutorialStep===null&&<div className="bench-entry" role="status">
         <span>{seated?'🪑 Du sitzt auf der Bank':'🪑 Sitzbank in der Nähe'}</span>
         <button type="button" aria-label={seated?'Von Bank aufstehen':'Auf Bank setzen'}
           onClick={()=>{router.clearAll();controls.current.interact=true;}}>
@@ -343,8 +436,10 @@ export default function App(){
       {nearby&&!studio&&<div className="nearby-entry" role="status">
         {nearby==='garage'?'🛠️ Garage':'🏠 Zuhause'} in der Nähe!
         <button type="button" onClick={()=>openStudio(nearby)}>ÖFFNEN (E)</button>
+        {nearby==='garage'&&damage>0&&<button type="button" className="repair" onClick={repair} aria-label="Scooter reparieren">
+          🔧 REPARIEREN · {Math.min(profile.coins,repairCost(damage)).toLocaleString('de-DE')} 🪙</button>}
       </div>}
-      <div className="hint">WASD · V KAMERA · E GARAGE / ZUHAUSE / RUTSCHE · R RESET</div>
+      <div className="hint">WASD · V KAMERA · E AKTION (GARAGE, WACHE, KOLLEGE, RUTSCHE) · R RESET</div>
     </div>}
     {started&&tutorialStep!==null&&!studio&&<Tutorial step={tutorialStep} onNext={nextTutorial} onSkip={finishTutorial}/>}
     {started&&studio&&<SceneError><Suspense fallback={<div className="loading">STUDIO WIRD GELADEN …</div>}>
@@ -352,10 +447,10 @@ export default function App(){
     </Suspense></SceneError>}
     {!started&&!unsupported&&<div className="overlay"><div className="intro"><img className="intro-logo" src="/icons/logo.svg" alt="AliAsaf-Scooter Logo" width="132" height="132"/><div className="eyebrow">OPEN WORLD SCOOTER GAME</div>
       <h1>ALIASAF<br/><i>SCOOTER.</i></h1>
-      <p>Dein Scooter. Deine Straße. Dein Wald. Meistere drei Challenges, suche den goldenen Schlüssel und gestalte Fahrer und Scooter.</p>
+      <p>Deine Stadt bei Sonnenuntergang. Weich dem Verkehr aus, nimm deinen Kollegen {BUDDY_NAME} mit, schau in der Polizeiwache vorbei und hol dir Coins in drei Challenges.</p>
       <button className="start" onClick={begin}>JETZT FAHREN →</button>
       <p style={{fontSize:12,opacity:.7}}>PC: WASD / Pfeiltasten · Handy: Gas gedrückt halten und nach oben zum Wheelie wischen.</p>
-      <p style={{fontSize:11,opacity:.5}}>REACT THREE FIBER · VERSION 0.9</p>
+      <p style={{fontSize:11,opacity:.5}}>REACT THREE FIBER · VERSION 1.0 · SUNSET CITY</p>
     </div></div>}
     {unsupported&&<div className="startup-error" role="alert"><h2>WebGL ist in dieser Vorschau nicht verfügbar.</h2><p>Öffne im Codespace den Port 5173 mit „Open in Browser“ direkt in Safari, Chrome oder Edge.</p><button onClick={()=>location.reload()}>Erneut versuchen</button></div>}
   </>;

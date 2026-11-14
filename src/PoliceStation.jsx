@@ -62,7 +62,7 @@ function StationBuilding(){
       <cylinderGeometry args={[.09,.09,3,10]}/>
       <meshStandardMaterial color="#c5ccd1" metalness={.75} roughness={.3}/>
     </mesh>)}
-    <mesh position={[0,3.62,front-2.72]}>
+    <mesh position={[0,3.62,front-2.72]} rotation={[0,Math.PI,0]}>
       <planeGeometry args={[4.6,1.15]}/>
       <meshBasicMaterial map={sign} side={THREE.DoubleSide} toneMapped={false}/>
     </mesh>
