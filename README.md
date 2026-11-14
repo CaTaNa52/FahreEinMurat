@@ -47,6 +47,9 @@ Die Welt spielt jetzt bei Sonnenuntergang: Farbverlauf-Himmel mit Sonne, Palmena
   - Zeigt alle Orte mit Namen, die Stadtteile, Murats mögliche Treffpunkte (ab mittlerem Zoom), den Verkehr und dich als Pfeil.
   - Schließen mit ✕, **M** oder **Esc**.
 
+### Kein Zoomen mehr auf dem Handy
+Der Browser zoomte manchmal in das Spiel hinein (zwei Daumen auf Lenkung und Gas wirken wie eine Zwei-Finger-Geste, oder ein schneller Doppeltipp). `src/noZoom.js` verhindert das: Viewport fest auf 100 %, Zwei-Finger- und Safari-Gesten werden abgefangen, Doppeltipp zoomt nicht mehr (der zweite Tipp auf einen Knopf zählt trotzdem). Rutscht doch ein Zoom durch (z. B. durch eine Bedienungshilfe), springt die Seite von selbst auf 100 % zurück.
+
 ### Aktionskreise
 Alle Stellen, an denen etwas passiert, leuchten jetzt: heller Ring, Lichtfleck am Boden und eine weiche Lichtsäule. Das gilt für die drei Challenges, den Rutschen-Einstieg, den Eingang der Polizeiwache, den Garagenhof und den Platz vor dem Haus. Die Slalom-Ringe sind ebenfalls heller.
 

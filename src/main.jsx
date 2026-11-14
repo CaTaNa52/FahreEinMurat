@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import './style.css';
 import { registerGameServiceWorker } from './pwa.js';
+import { installNoZoom } from './noZoom.js';
 registerGameServiceWorker();
+installNoZoom();
 
 createRoot(document.getElementById('root')).render(<App />);
