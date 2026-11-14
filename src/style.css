@@ -308,3 +308,10 @@ html,body,#root{ -webkit-font-smoothing:antialiased; text-rendering:optimizeLegi
 .pool-entry{border-color:#7fe3ff88;background:#0d2b3be8;color:#e9fbff}
 .pool-entry button{background:#7fe3ff;color:#0b2433}
 .pool-entry button:disabled{background:#2c4b5a;color:#9fc3d1;cursor:default}
+
+/* Game logo (kid face) on the start screen */
+/* Size follows screen height so the start button never slides under the install banner. */
+.intro-logo{display:block;width:clamp(52px,calc(14vh - 40px),132px);height:auto;margin:0 auto 8px;border-radius:50%;box-shadow:0 0 0 3px #c8ff5733,0 14px 40px #0008;animation:logo-pop .6s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes logo-pop{from{transform:scale(.6) rotate(-8deg);opacity:0}to{transform:none;opacity:1}}
+@media(max-height:470px) and (orientation:landscape){.intro-logo{width:64px;margin-bottom:4px}}
+@media(prefers-reduced-motion:reduce){.intro-logo{animation:none}}
