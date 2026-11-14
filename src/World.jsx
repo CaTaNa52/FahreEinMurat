@@ -7,9 +7,9 @@ import { GroundUnderglow } from './Underglow.jsx';
 import { updateDriveSpeed } from './driving.js';
 import { consumeFrameInput } from './input.js';
 import { City } from './City.jsx';
-import { BENCHES, CROSSROADS, OBSTACLES, CLEARINGS, POLICE_LOT, resolveWorldMovement, closestBench } from './worldLayout.js';
+import { BENCHES, CROSSROADS, OBSTACLES, CLEARINGS, POLICE_LOT, resolveWorldMovement, closestBench, WORLD } from './worldLayout.js';
 import { POOL, SLIDES, SLIDE_ENTRY, SWIM, inWater, exitPoint, distanceToEdge, updateSwim, nearSlideEntry,
-  samplePath, pathLength, slideSpeed, waterDepth } from './pool.js';
+  SLIDE_TRACKS, sampleTrack, trackPoint, slideSpeed, waterDepth } from './pool.js';
 import { PoolComplex, Swimmer, Splash, groundWithPoolHole } from './Pool.jsx';
 import { PoliceStation } from './PoliceStation.jsx';
 import { PoliceInterior } from './PoliceInterior.jsx';
@@ -17,13 +17,13 @@ import { Traffic } from './Traffic.jsx';
 import { Sky, Palms, makePalms, SUNSET, SUN_POSITION } from './Scenery.jsx';
 import { BuddyWaiting, Beacon } from './Buddy.jsx';
 import { Walker } from './Models.jsx';
+import { ActionMarker } from './Marker.jsx';
 import { createTraffic, collideCar, closingSpeed } from './traffic.js';
 import { impactOutcome, wallOutcome, applyDamage, isTotaled, speedCap } from './crash.js';
 import { createBuddy, updateBuddy, buddyReact, BUDDY_LOOK, BUDDY_SPOTS } from './buddy.js';
 import { ROOM, STATION_DOOR, nearStationDoor, createWalk, updateWalk, interiorAction, stationLine } from './interior.js';
 import { DRIVE_LIMITS } from './driving.js';
 
-const WORLD = 1200;
 const clamp = THREE.MathUtils.clamp;
 function rng(seed) { let s = seed >>> 0; return () => { s = (1664525 * s + 1013904223) >>> 0; return s / 4294967296; }; }
 function makeTrees(count) {
@@ -105,20 +105,9 @@ function ZoneSign({ title, subtitle, color }) {
   </mesh>;
 }
 function ChallengeZone({ config, color, subtitle }) {
-  const glow = useRef();
-  useFrame(({ clock }) => {
-    if (glow.current) glow.current.material.opacity = 0.21 + Math.sin(clock.elapsedTime * 3.3) * 0.12;
-  });
-  return <group position={[config.x, 0.095, config.z]}>
-    <mesh ref={glow} rotation={[-Math.PI / 2, 0, 0]}>
-      <circleGeometry args={[config.radius, 48]}/>
-      <meshBasicMaterial color={color} transparent opacity={.3} depthWrite={false} blending={THREE.AdditiveBlending}/>
-    </mesh>
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, .012, 0]}>
-      <ringGeometry args={[config.radius - .22, config.radius, 64]}/>
-      <meshBasicMaterial color={color} side={THREE.DoubleSide} transparent opacity={.94} depthWrite={false}/>
-    </mesh>
-    <ZoneSign title={config.name} subtitle={subtitle} color={color}/>
+  return <group>
+    <ActionMarker x={config.x} z={config.z} radius={config.radius} color={color} y={.095} height={5}/>
+    <group position={[config.x, 0.095, config.z]}><ZoneSign title={config.name} subtitle={subtitle} color={color}/></group>
   </group>;
 }
 function TrafficCone({ data }) {
@@ -140,8 +129,8 @@ function TrafficCone({ data }) {
       <meshStandardMaterial color="#f5f8f2" roughness={.55}/>
     </mesh>
     <mesh position={[data.side * 2.95, .013, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <ringGeometry args={[1.3, 1.49, 28]}/>
-      <meshBasicMaterial color="#bfff52" transparent opacity={.94} side={THREE.DoubleSide} depthWrite={false}/>
+      <ringGeometry args={[1.22, 1.49, 28]}/>
+      <meshBasicMaterial color="#d4ff7a" transparent opacity={1} side={THREE.DoubleSide} depthWrite={false} toneMapped={false}/>
     </mesh>
   </group>;
 }
@@ -207,10 +196,12 @@ function spawnPoint(){
   if(key==='poolside')return {x:POOL.x,z:POOL.z-POOL.d/2-3.2,yaw:Math.PI};
   if(key==='police')return {x:POLICE_LOT.x-4,z:POLICE_LOT.z,yaw:-Math.PI/2};
   if(key==='buddy')return {x:BUDDY_SPOTS[4].x+2.6,z:BUDDY_SPOTS[4].z+1.5,yaw:0,buddy:true};
+  // Free start point for testing: ?spawn=x,z,heading° (e.g. ?spawn=12,160,90).
+  const free=key?.split(',').map(Number);
+  if(free?.length>=2&&free.every(Number.isFinite))return {x:free[0],z:free[1],yaw:(free[2]??0)*Math.PI/180};
   if(key==='station')return {x:STATION_DOOR.x,z:STATION_DOOR.z+3.1,yaw:-Math.PI/2};
   return {x:roadX(0),z:0,yaw:0};
 }
-const SLIDE_LENGTHS=SLIDES.map(s=>pathLength(s.points));
 // District shown in the HUD corner when the rider enters a new part of the map.
 function areaName(x,z){
   if(Math.hypot(x-POLICE_LOT.x,z-POLICE_LOT.z)<34)return 'POLIZEIWACHE';
@@ -227,6 +218,7 @@ function Driver({ input, trees, cars, radar, onSpeed, onGameEvent, cosmetics, vi
   const group = useRef(), scooter = useRef(), rider = useRef(), glow = useRef();
   const camera = useThree(state => state.camera);
   const camTarget = useMemo(() => new THREE.Vector3(), []);
+  const lookTarget = useMemo(() => new THREE.Vector3(), []), lookGoal = useMemo(() => new THREE.Vector3(), []);
   const spawn = useMemo(spawnPoint, []);
   const player = useRef({ x: spawn.x, z: spawn.z, yaw: spawn.yaw, speed: 0, pitch: 0, pitchVel: 0, lean: 0, timer: 0, fallen: false, fallTime: 0, respawnZ: 0,
     damage: 0, crashes: 0, hitCooldown: 0, safe: 0, shake: 0, stay: false, totaled: false, wheelieTime: 0 });
@@ -369,23 +361,34 @@ function Driver({ input, trees, cars, radar, onSpeed, onGameEvent, cosmetics, vi
       if(glow.current){glow.current.position.set(p.x,.067,p.z);glow.current.rotation.y=p.yaw;}
     }
     if(mode.current==='slide'){
-      const sl=slide.current, path=SLIDES[sl.index].points, len=SLIDE_LENGTHS[sl.index];
-      const at=samplePath(path,sl.dist/len);
-      sl.speed=slideSpeed(sl.speed,at.slope,dt);
+      // The rider follows an evenly spaced track by distance; the camera rides the same
+      // track a little behind and looks a little ahead, so both flow through every bend.
+      const sl=slide.current, track=SLIDE_TRACKS[sl.index], tube=SLIDES[sl.index].tube;
+      sl.speed=slideSpeed(sl.speed,sampleTrack(track,sl.dist).slope,dt);
       sl.dist+=sl.speed*dt;
       motion.current.pose='slide';
-      const pos=samplePath(path,sl.dist/len);
+      const pos=sampleTrack(track,sl.dist);
+      swimmer.current.rotation.order='YXZ';
       swimmer.current.position.set(pos.x,pos.y+.12,pos.z);
-      swimmer.current.rotation.set(0,pos.yaw,0);
+      swimmer.current.rotation.set(-pos.slope*.85,pos.yaw,0);
       const first=view==='first';
-      const behind=first?-.1:4.2;
-      camTarget.set(pos.x+Math.sin(pos.yaw)*behind,pos.y+(first?1.05:2.3),pos.z+Math.cos(pos.yaw)*behind);
-      camera.position.lerp(camTarget,1-Math.exp(-(first?14:6)*dt));
-      camera.lookAt(pos.x-Math.sin(pos.yaw)*6,pos.y+(first?.3:.4)-1.2,pos.z-Math.cos(pos.yaw)*6);
+      const [bx,by,bz]=first?[pos.x-Math.sin(pos.yaw)*.1,pos.y+.42,pos.z-Math.cos(pos.yaw)*.1]:trackPoint(track,sl.dist-(tube?1.8:3.6));
+      const [ax,ay,az]=trackPoint(track,sl.dist+(first?4:tube?.9:2.4));
+      camTarget.set(bx,by+(first?.5:tube?.72:1.75),bz);
+      if(sl.fresh){
+        // First frame on the slide: start behind the rider instead of flying up from the deck.
+        camera.position.copy(camTarget);lookTarget.set(ax,ay+.35,az);sl.fresh=false;
+      }else{
+        const ease=1-Math.exp(-9*dt);
+        camera.position.lerp(camTarget,ease);
+        lookTarget.lerp(lookGoal.set(ax,ay+.35,az),ease);
+      }
+      camera.lookAt(lookTarget);
       p.timer+=dt;if(p.timer>=.13){p.timer=0;onSpeed(sl.speed);}
-      if(sl.dist>=len){
-        const end=path[path.length-1],prev=path[path.length-2];
-        enterWater(end[0],end[2],Math.atan2(-(end[0]-prev[0]),-(end[2]-prev[2])),1.6,1.6);
+      if(sl.dist>=track.len){
+        const end=track.pts[track.pts.length-1];
+        swimmer.current.rotation.set(0,pos.yaw,0);
+        enterWater(end[0],end[2],pos.yaw,1.6,1.6);
       }
       c.interact=false;
       return;
@@ -535,7 +538,7 @@ function Driver({ input, trees, cars, radar, onSpeed, onGameEvent, cosmetics, vi
         setPrompt(null);setMode('walk');
         return;
       }else if(nearSlideEntry(p.x,p.z)&&Math.abs(p.speed)<2.5&&!p.fallen){
-        slide.current={index:nextSlide.current,dist:0,speed:3};
+        slide.current={index:nextSlide.current,dist:0,speed:3,fresh:true};
         nextSlide.current=(nextSlide.current+1)%SLIDES.length;
         p.speed=0;p.pitch=0;p.pitchVel=0;c.interact=false;
         failChallenge(challenge.current,'Ab auf die Rutsche – Challenge beendet.',onGameEvent);
@@ -671,6 +674,10 @@ export default function World({ input, radar, quality, onSpeed, onGameEvent, cos
     <PoliceStation/><PoliceInterior/><PoolComplex quality={quality}/>
     <Forest trees={trees}/><Palms palms={palms}/><ChallengeCourse treasure={treasure}/>
     <Traffic cars={cars} radar={radar} paused={paused}/>
+    {/* Lit action spots: station entrance, garage forecourt, front of the house. */}
+    <ActionMarker x={STATION_DOOR.x} z={STATION_DOOR.z} radius={1.5} color="#4aa3ff"/>
+    <ActionMarker x={WORKSHOPS.garage.x} z={WORKSHOPS.garage.z-7.5} radius={1.6} color="#63ffd9" y={.19}/>
+    <ActionMarker x={WORKSHOPS.home.x+6.1} z={WORKSHOPS.home.z} radius={1.2} color="#ffd9a0" y={.36} height={5}/>
     <Driver input={input} trees={solids} cars={cars} radar={radar} onSpeed={onSpeed} onGameEvent={handleEvent}
       cosmetics={cosmetics} view={view} paused={paused} onBenchChange={setSeatedBench} quality={quality}/>
     <TourCamera step={tutorialStep}/>

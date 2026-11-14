@@ -40,10 +40,22 @@ Die Welt spielt jetzt bei Sonnenuntergang: Farbverlauf-Himmel mit Sonne, Palmena
 - Empfang mit Beamtem (kennt deine Unfälle des Tages), Schreibtisch, Spinde, Wartebank, Aushang, zwei Zellen: Zelle 1 ist offen und begehbar, in Zelle 2 sitzt jemand, mit dem du reden kannst.
 - Am grünen Ring beim Ausgang **E** oder **RAUSGEHEN**: zurück zum Scooter.
 
-### Minimap
-Runde Karte oben links, dreht sich mit der Fahrtrichtung: Straßen, Häuser, Freibad, Autos, **P** Polizei, **G** Garage, **H** Zuhause, ★ Challenges. Ziele außerhalb der Karte kleben am Rand und zeigen die Richtung.
+### Karte
+- **Minimap** oben links, dreht sich mit der Fahrtrichtung: Straßen, Häuser, Freibad, Autos, **P** Polizei, **G** Garage, **H** Zuhause, ★ Challenges. Ziele außerhalb kleben am Rand und zeigen die Richtung.
+- **Große Karte:** Minimap antippen oder **M** drücken. Norden ist oben, das Spiel pausiert solange.
+  - Ziehen verschiebt, Mausrad oder zwei Finger zoomen (0,35 bis 7 Pixel pro Meter), dazu die Tasten ＋ / － / ◎ (auf mich) / ▣ (ganze Karte).
+  - Zeigt alle Orte mit Namen, die Stadtteile, Murats mögliche Treffpunkte (ab mittlerem Zoom), den Verkehr und dich als Pfeil.
+  - Schließen mit ✕, **M** oder **Esc**.
 
-Startpunkte zum Ausprobieren: `?spawn=station` (vor der Wache), `?spawn=buddy` (Murat wartet direkt neben dir).
+### Aktionskreise
+Alle Stellen, an denen etwas passiert, leuchten jetzt: heller Ring, Lichtfleck am Boden und eine weiche Lichtsäule. Das gilt für die drei Challenges, den Rutschen-Einstieg, den Eingang der Polizeiwache, den Garagenhof und den Platz vor dem Haus. Die Slalom-Ringe sind ebenfalls heller.
+
+### Rutschen (überarbeitet)
+- **Turm:** drei saubere Treppenläufe mit Wangen, Geländern und zwei Podesten; oben eine Öffnung mit Geländer, Lücken im Geländer an beiden Rutschen-Starts.
+- **Turbo-Spirale:** neu verlegt. Sie geht ohne Knick vom Turm in die Wendel und in einem langen Bogen ins Becken (vorher zwei scharfe Knicke).
+- **Fahrt:** Fahrer und Kamera folgen einer gleichmäßig abgetasteten Bahn (ein Punkt alle 20 cm). Blickrichtung und Gefälle ändern sich stetig statt in Sprüngen; die Kamera fährt auf derselben Bahn hinterher.
+
+Startpunkte zum Ausprobieren: `?spawn=station` (vor der Wache), `?spawn=buddy` (Murat wartet direkt neben dir), `?spawn=pool` (am Rutschen-Einstieg), `?spawn=x,z,grad` (freier Punkt, z. B. `?spawn=10,161,145`).
 
 ## Architektur – wie ONEVERSE
 
@@ -196,6 +208,9 @@ src/
   buddy.js          Ablauf Anruf → Abholen → Mitfahren → Absetzen (testbar)
   Scenery.jsx       Sonnenuntergangs-Himmel und Palmen
   Minimap.jsx       Radar-Karte im HUD
+  BigMap.jsx        Große Karte zum Erkunden
+  mapView.js        Zoom- und Verschiebe-Rechnung der Karte (testbar)
+  Marker.jsx        Leuchtender Aktionskreis
   Models.jsx        Scooter- und Fahrermodell samt Kosmetik
   Customizer.jsx    3D-Konfigurator mit drehbarer Vorschau
   gameplay.js       Challenge-Regeln und zufällige Such-Spawns

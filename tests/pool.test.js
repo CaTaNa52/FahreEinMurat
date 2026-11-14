@@ -82,3 +82,33 @@ test('police station is solid, faces the road and has a reachable parking lot',(
   for(const c of [...Object.values(CHALLENGES)])assert.ok(Math.hypot(c.x-POLICE.x,c.z-POLICE.z)>20,'clear of challenge zones');
   for(const j of CROSSROADS)assert.ok(Math.abs(j.z-POLICE.z)>POLICE.d/2+5,'clear of side streets');
 });
+
+test('slide tracks are evenly spaced and turn smoothly (no per-segment jumps)',async()=>{
+  const {SLIDE_TRACKS,SLIDES,sampleTrack,trackPoint}=await import('../src/pool.js');
+  SLIDE_TRACKS.forEach((track,index)=>{
+    const {pts,spacing,len}=track;
+    assert.ok(len>20,'slide is long enough');
+    // Even spacing: every step within 12 % of the nominal spacing.
+    for(let i=1;i<pts.length;i++){
+      const step=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1],pts[i][2]-pts[i-1][2]);
+      assert.ok(Math.abs(step-spacing)<spacing*.12,`step ${i} of slide ${index}: ${step}`);
+    }
+    // Same start and end as the designed path.
+    const first=SLIDES[index].points[0],last=SLIDES[index].points.at(-1);
+    assert.ok(Math.hypot(pts[0][0]-first[0],pts[0][2]-first[2])<.01);
+    assert.ok(Math.hypot(pts.at(-1)[0]-last[0],pts.at(-1)[2]-last[2])<.01);
+    // Riding at 10 cm steps: position moves ~10 cm, heading never turns more than 6° (a 1 m curve radius).
+    let prev=sampleTrack(track,1);
+    for(let d=1.1;d<len-1;d+=.1){
+      const now=sampleTrack(track,d);
+      const moved=Math.hypot(now.x-prev.x,now.y-prev.y,now.z-prev.z);
+      assert.ok(moved>.07&&moved<.13,`moved ${moved} at ${d}`);
+      let turn=Math.abs(now.yaw-prev.yaw);if(turn>Math.PI)turn=Math.PI*2-turn;
+      assert.ok(turn<.1,`heading jump ${turn} at ${d} on slide ${index}`);
+      prev=now;
+    }
+  });
+  // Outside the track the line simply continues (used by the chase camera).
+  const t=SLIDE_TRACKS[0],before=trackPoint(t,-1),start=trackPoint(t,0);
+  assert.ok(Math.abs(Math.hypot(before[0]-start[0],before[1]-start[1],before[2]-start[2])-1)<.05);
+});
