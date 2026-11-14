@@ -350,7 +350,7 @@ export default function App(){
     {started&&studio&&<SceneError><Suspense fallback={<div className="loading">STUDIO WIRD GELADEN …</div>}>
       <Customizer room={studio} profile={profile} onChange={customize} onClose={closeStudio} message={studioMessage}/>
     </Suspense></SceneError>}
-    {!started&&!unsupported&&<div className="overlay"><div className="intro"><div className="eyebrow">OPEN WORLD SCOOTER GAME</div>
+    {!started&&!unsupported&&<div className="overlay"><div className="intro"><img className="intro-logo" src="/icons/logo.svg" alt="AliAsaf-Scooter Logo" width="132" height="132"/><div className="eyebrow">OPEN WORLD SCOOTER GAME</div>
       <h1>ALIASAF<br/><i>SCOOTER.</i></h1>
       <p>Dein Scooter. Deine Straße. Dein Wald. Meistere drei Challenges, suche den goldenen Schlüssel und gestalte Fahrer und Scooter.</p>
       <button className="start" onClick={begin}>JETZT FAHREN →</button>

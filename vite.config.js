@@ -12,7 +12,7 @@ function pwaPrecache(){
     const source=await readFile(output,'utf8');
     const assets=['/','/index.html','/manifest.webmanifest',
       '/icons/icon-192.png','/icons/icon-512.png','/icons/icon-maskable-512.png',
-      '/icons/apple-touch-icon.png',
+      '/icons/apple-touch-icon.png','/icons/logo.svg',
       ...Object.keys(bundle).filter(path=>path!=='sw.js').map(path=>'/'+path)];
     const unique=[...new Set(assets)];
     const hash=createHash('sha256').update(JSON.stringify(unique)).digest('hex').slice(0,12);
