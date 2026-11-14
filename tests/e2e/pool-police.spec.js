@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 const enter=async(page,spawn)=>{
-  await page.addInitScript(()=>localStorage.setItem('fahre-ein-murat-tutorial-seen-v1','1'));
+  await page.addInitScript(()=>localStorage.setItem('aliasaf-scooter-tutorial-seen-v1','1'));
   await page.goto('/?spawn='+spawn);
   await page.getByRole('button',{name:/JETZT FAHREN/}).click();
   await expect(page.locator('.scene-host canvas')).toBeVisible({timeout:25000});

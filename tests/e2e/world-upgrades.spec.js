@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-const profileKey='fahre-ein-murat-profile-v2';
+const profileKey='aliasaf-scooter-profile-v2';
 const enter=async page=>{
   await page.goto('/');
   await page.getByRole('button',{name:/JETZT FAHREN/}).click();
@@ -16,7 +16,7 @@ test('new streets, solid world props, 3D garage underglow and custom neon persis
   })),profileKey);
   await enter(page);
   await page.getByRole('button',{name:'Garage öffnen'}).click();
-  const garage=page.getByRole('dialog',{name:'Murat Garage'});
+  const garage=page.getByRole('dialog',{name:'AliAsaf Garage'});
   await expect(garage).toBeVisible();
   const glowSection=garage.locator('.picker-section').filter({hasText:'Unterbodenbeleuchtung'});
   await glowSection.getByRole('button',{name:/Neon an/}).click();

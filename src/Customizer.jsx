@@ -67,11 +67,11 @@ export default function Customizer({room,profile,onChange,onClose,message}){
   const safeProfile=normalizeProfile(profile);
   const values=safeProfile[category];
   return <div className="customizer-layer" role="dialog" aria-modal="true"
-    aria-label={garage?'Murat Garage':'Zuhause'}>
+    aria-label={garage?'AliAsaf Garage':'Zuhause'}>
     <section className="customizer-window">
       <header className="customizer-head">
         <div><span className="eyebrow">{garage?'SCOOTER WERKSTATT':'CHARAKTER STUDIO'}</span>
-          <h2>{garage?'🛠️ MURAT GARAGE':'🏠 ZUHAUSE'}</h2>
+          <h2>{garage?'🛠️ ALIASAF GARAGE':'🏠 ZUHAUSE'}</h2>
           <p>{garage?'Gestalte deinen Scooter nach deinem Geschmack.':'Dein Fahrer, dein Style.'}</p></div>
         <button type="button" className="close-studio" onClick={onClose} aria-label="Schließen">✕</button>
       </header>
@@ -95,7 +95,7 @@ export default function Customizer({room,profile,onChange,onClose,message}){
           </div>
         </div>
         <div className="studio-options">
-          <div className="studio-wallet">🪙 {safeProfile.coins.toLocaleString('de-DE')} MURAT-COINS</div>
+          <div className="studio-wallet">🪙 {safeProfile.coins.toLocaleString('de-DE')} ALIASAF-COINS</div>
           {garage?<>
             <OptionSet room={category} profile={safeProfile} field="model" label="Scooter-Modell"
               items={MODEL_OPTIONS} value={values.model} onChange={onChange}/>

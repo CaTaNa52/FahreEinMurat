@@ -1,5 +1,8 @@
 // All cosmetic choices are persisted offline; no account or backend required.
-export const PROFILE_KEY='fahre-ein-murat-profile-v2';
+export const PROFILE_KEY='aliasaf-scooter-profile-v2';
+// Saves from before the rename to AliAsaf-Scooter are migrated, never lost.
+export const LEGACY_PROFILE_KEYS=['fahre-ein-murat-profile-v2'];
+export const LEGACY_WALLET_KEY='fahre-ein-murat-wallet-v1';
 export const DEFAULT_GARAGE={
   model:'city',body:'#53e4ab',trim:'#1d3035',light:'#fff0b8',
   tires:'road',underglow:false,glowColor:'#55ffcf',box:false
@@ -42,10 +45,12 @@ export function normalizeProfile(value) {
 }
 export function loadProfile(storage){
   try{
-    const raw=JSON.parse(storage.getItem(PROFILE_KEY)||'null');
-    if(raw&&typeof raw==='object')return normalizeProfile(raw);
+    for(const key of [PROFILE_KEY,...LEGACY_PROFILE_KEYS]){
+      const raw=JSON.parse(storage.getItem(key)||'null');
+      if(raw&&typeof raw==='object')return normalizeProfile(raw);
+    }
     // Preserve coins from the previous wallet version on upgrade.
-    const old=JSON.parse(storage.getItem('fahre-ein-murat-wallet-v1')||'null');
+    const old=JSON.parse(storage.getItem(LEGACY_WALLET_KEY)||'null');
     return normalizeProfile({coins:old?.coins});
   }catch{return initialProfile();}
 }
@@ -56,7 +61,7 @@ export function chooseUpgrade(profile,category,key,value){
   }
   const id=upgradeId(category,key,value),cost=upgradeCost(category,key,value);
   const already=safe.owned.includes(id);
-  if(cost&&!already&&safe.coins<cost)return {profile:safe,error:'Nicht genug Murat-Coins.'};
+  if(cost&&!already&&safe.coins<cost)return {profile:safe,error:'Nicht genug AliAsaf-Coins.'};
   return {profile:{
     ...safe,coins:safe.coins-(already?0:cost),
     owned:cost&&!already?[...safe.owned,id]:safe.owned,

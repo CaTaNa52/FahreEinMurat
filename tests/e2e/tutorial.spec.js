@@ -14,7 +14,7 @@ test('first run introduces actual home, garage, challenges and driving controls;
   await expect(tutorial).toBeVisible();
   await expect(tutorial).toContainText('Hier ist dein Zuhause');
   await tutorial.getByRole('button',{name:'WEITER'}).click();
-  await expect(tutorial).toContainText('Hier ist deine Murat-Garage');
+  await expect(tutorial).toContainText('Hier ist deine AliAsaf-Garage');
   await tutorial.getByRole('button',{name:'WEITER'}).click();
   await expect(tutorial).toContainText('Auf der Karte warten Challenges');
   await tutorial.getByRole('button',{name:'WEITER'}).click();

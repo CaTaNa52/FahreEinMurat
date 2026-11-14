@@ -16,3 +16,9 @@ test('storage blocked by browser privacy settings does not crash tutorial',()=>{
   assert.equal(hasSeenTutorial(blocked),false);
   assert.doesNotThrow(()=>markTutorialSeen(blocked));
 });
+
+test('players who saw the tutorial before the rename are not shown it again',async()=>{
+  const { hasSeenTutorial } = await import('../src/tutorial.js');
+  assert.equal(hasSeenTutorial({getItem:key=>key==='fahre-ein-murat-tutorial-seen-v1'?'1':null}),true);
+  assert.equal(hasSeenTutorial({getItem:()=>null}),false);
+});

@@ -54,12 +54,12 @@ export default function InstallPrompt({started=false}){
       aria-label="App-Installation öffnen" onClick={()=>{setExpanded(true);setShowHelp(false);}}>
       <span aria-hidden="true">⬇</span> APP
     </button>}
-    {expanded&&<aside className="pwa-prompt" role="dialog" aria-label="FahreEinMurat installieren"
+    {expanded&&<aside className="pwa-prompt" role="dialog" aria-label="AliAsaf-Scooter installieren"
       data-testid="install-prompt">
       <div className="pwa-logo" aria-hidden="true"><img src="/icons/icon-192.png" alt=""/></div>
       <div className="pwa-body">
         <div className="pwa-kicker">ECHTES APP-FEELING</div>
-        <strong>FAHRE EIN MURAT installieren</strong>
+        <strong>ALIASAF-SCOOTER installieren</strong>
         <p>Direkt vom Homescreen starten – ohne Browserleiste und mit Offline-Spielwelt.</p>
         {showHelp&&<div className="pwa-help" role="status">
           {ios?<>Auf dem iPhone: in <b>Safari</b> öffnen, unten <b>Teilen</b> <span aria-hidden="true">□↑</span> antippen und <b>Zum Home-Bildschirm</b> wählen. Danach auf <b>Hinzufügen</b> tippen.</>:

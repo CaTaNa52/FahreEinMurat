@@ -321,7 +321,7 @@ function PoolSign(){
   const map=useMemo(()=>canvasTexture(512,(c,s)=>{
     c.fillStyle='#0f3c5c';c.fillRect(0,0,s,s);
     c.fillStyle='#2fb7e3';for(let i=0;i<4;i++){c.beginPath();for(let x=0;x<=s;x+=8)c.lineTo(x,s*.78+Math.sin(x/s*Math.PI*4+i)*10+i*14);c.lineTo(s,s);c.lineTo(0,s);c.fill();}
-    c.fillStyle='#fff';c.textAlign='center';c.font='900 92px system-ui';c.fillText('MURAT',s/2,s*.36);
+    c.fillStyle='#fff';c.textAlign='center';c.font='900 92px system-ui';c.fillText('ALIASAF',s/2,s*.36,s-40);
     c.font='900 74px system-ui';c.fillStyle='#ffd24f';c.fillText('FREIBAD',s/2,s*.56);
   }),[]);
   useDispose(map);

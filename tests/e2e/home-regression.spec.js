@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const PROFILE_KEY='fahre-ein-murat-profile-v2';
+const PROFILE_KEY='aliasaf-scooter-profile-v2';
 const open=async page=>{
   await page.goto('/');
   await page.getByRole('button',{name:/JETZT FAHREN/}).click();
@@ -56,7 +56,7 @@ test('regression: garage → Zuhause → garage changes keep both 3D studios ali
   await open(page);
   for(const room of ['Garage öffnen','Zuhause öffnen','Garage öffnen']){
     await page.getByRole('button',{name:room}).click();
-    const dialog=page.getByRole('dialog',{name:room==='Zuhause öffnen'?'Zuhause':'Murat Garage'});
+    const dialog=page.getByRole('dialog',{name:room==='Zuhause öffnen'?'Zuhause':'AliAsaf Garage'});
     await expect(dialog).toBeVisible();
     await expect(dialog.locator('canvas')).toBeVisible();
     await dialog.getByRole('button',{name:'Modell rechts drehen'}).click();
