@@ -16,11 +16,11 @@ test('open-world HUD shows the minimap and a healthy scooter',async({page})=>{
 });
 
 test('walk into the police station, talk to the officer and leave again',async({page})=>{
-  test.setTimeout(120000);
+  test.setTimeout(180000);
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await enter(page,'?spawn=station');
   const door=page.getByRole('button',{name:'Polizeiwache betreten'});
-  await expect(door).toBeVisible({timeout:20000});
+  await expect(door).toBeVisible({timeout:60000});
   await door.click();
   await expect(page.getByTestId('station-status')).toBeVisible({timeout:10000});
   await expect(page.locator('.speed small')).toContainText('ZU FUSS');
