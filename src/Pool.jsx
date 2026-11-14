@@ -1,7 +1,8 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { POOL, POOL_DECK, SLIDES, SLIDE_TOWER, SLIDE_ENTRY, SLIDE_PILLARS, POOL_OBSTACLES } from './pool.js';
+import { POOL, POOL_DECK, SLIDES, SLIDE_TRACKS, SLIDE_TOWER, SLIDE_ENTRY, SLIDE_PILLARS, POOL_OBSTACLES } from './pool.js';
+import { ActionMarker } from './Marker.jsx';
 import { DEFAULT_RIDER } from './customization.js';
 
 const X0=POOL.x-POOL.w/2, X1=POOL.x+POOL.w/2, Z0=POOL.z-POOL.d/2, Z1=POOL.z+POOL.d/2;
@@ -182,41 +183,80 @@ function DivingBoard(){
     <mesh position={[1.5,.86,0]} rotation={[0,0,.025]} castShadow><boxGeometry args={[3.2,.08,.55]}/><meshStandardMaterial color="#2f8fe3" roughness={.4}/></mesh>
   </group>;
 }
-function SlideTower(){
-  const T=SLIDE_TOWER, legs=[[-1,-1],[1,-1],[1,1],[-1,1]];
-  const steps=14, mid=T.top/2;
-  return <group position={[T.x,0,T.z]}>
-    {legs.map(([a,b],i)=><mesh key={i} position={[a*(T.w/2-.15),(T.top+1.3)/2,b*(T.d/2-.15)]} castShadow>
-      <cylinderGeometry args={[.13,.15,T.top+1.3,10]}/><meshStandardMaterial color="#f2f4f2" metalness={.3} roughness={.4}/>
+const WOOD='#d3c8b4', RAIL='#f8c630';
+// One straight stair flight along the tower's z axis: treads, two stringers under
+// them and a handrail with posts on each side, all on the same slope.
+function Flight({x,y0,y1,z0,z1,width=1.1}){
+  const rise=y1-y0, run=z1-z0, len=Math.hypot(rise,run), tilt=Math.atan2(-rise,run);
+  const steps=Math.max(6,Math.round(rise/.19)), depth=Math.abs(run)/steps;
+  const midY=(y0+y1)/2, midZ=(z0+z1)/2;
+  return <group>
+    {Array.from({length:steps},(_,i)=><mesh key={i} position={[x,y0+(i+1)/steps*rise-.03,z0+(i+.5)/steps*run]} castShadow>
+      <boxGeometry args={[width,.06,depth+.05]}/><meshStandardMaterial color={WOOD} roughness={.8}/>
     </mesh>)}
-    {[mid,T.top].map(y=><mesh key={y} position={[0,y-.1,0]} castShadow receiveShadow>
-      <boxGeometry args={[T.w,.2,T.d]}/><meshStandardMaterial color="#e1d6c2" roughness={.8}/>
-    </mesh>)}
-    {/* railings */}
-    {[[0,-T.d/2,T.w,.06],[0,T.d/2,T.w,.06],[-T.w/2,0,.06,T.d]].map(([x,z,w,d],i)=><group key={i}>
-      <mesh position={[x,T.top+.95,z]}><boxGeometry args={[w,.07,d]}/><meshStandardMaterial color="#f8c630"/></mesh>
-      <mesh position={[x,T.top+.5,z]}><boxGeometry args={[w,.05,d]}/><meshStandardMaterial color="#f8c630"/></mesh>
+    {[-1,1].map(s=><group key={s}>
+      <mesh position={[x+s*(width/2+.03),midY-.12,midZ]} rotation={[tilt,0,0]}>
+        <boxGeometry args={[.06,.2,len]}/><meshStandardMaterial color="#b9ad97" roughness={.8}/>
+      </mesh>
+      <mesh position={[x+s*(width/2+.03),midY+.95,midZ]} rotation={[tilt,0,0]}>
+        <boxGeometry args={[.055,.055,len]}/><meshStandardMaterial color={RAIL}/>
+      </mesh>
+      {[0,.5,1].map(f=><mesh key={f} position={[x+s*(width/2+.03),y0+f*rise+.47,z0+f*run]}>
+        <boxGeometry args={[.05,.95,.05]}/><meshStandardMaterial color={RAIL}/>
+      </mesh>)}
     </group>)}
+  </group>;
+}
+// Two-bar guard rail between two points at the same height.
+function Rail({from,to,y}){
+  const dx=to[0]-from[0],dz=to[1]-from[1],len=Math.hypot(dx,dz);
+  return <group position={[(from[0]+to[0])/2,y,(from[1]+to[1])/2]} rotation={[0,Math.atan2(dx,dz),0]}>
+    {[.5,.95].map(h=><mesh key={h} position={[0,h,0]}><boxGeometry args={[.06,.06,len]}/><meshStandardMaterial color={RAIL}/></mesh>)}
+    {[-1,1].map(e=><mesh key={e} position={[0,.48,e*len/2]}><boxGeometry args={[.06,.96,.06]}/><meshStandardMaterial color={RAIL}/></mesh>)}
+  </group>;
+}
+function Slab({x,z,w,d,y}){
+  return <mesh position={[x,y-.08,z]} castShadow receiveShadow>
+    <boxGeometry args={[w,.16,d]}/><meshStandardMaterial color="#e1d6c2" roughness={.8}/>
+  </mesh>;
+}
+// Slide tower: three flights (outside, west side, centre) connect two landings and
+// come up through a railed opening in the top deck. Gaps in the top rail mark the
+// two slide starts (spiral to the south, wave slide to the east).
+function SlideTower(){
+  const T=SLIDE_TOWER, h=T.w/2, top=T.top, L1=2.6, L2=5.1;
+  const hole={x0:-.3,x1:.9,z0:-1.3,z1:1};
+  return <group position={[T.x,0,T.z]}>
+    {[[-1,-1],[1,-1],[1,1],[-1,1]].map(([a,b],i)=><mesh key={i} position={[a*(h-.15),(top+1.3)/2,b*(h-.15)]} castShadow>
+      <cylinderGeometry args={[.13,.15,top+1.3,10]}/><meshStandardMaterial color="#f2f4f2" metalness={.3} roughness={.4}/>
+    </mesh>)}
+    {/* flights and landings */}
+    <Flight x={0} y0={0} y1={L1} z0={-h-3.3} z1={-h} width={1.2}/>
+    <Slab x={0} z={-h+.45} w={T.w} d={.9} y={L1}/>
+    <Flight x={-h+.7} y0={L1} y1={L2} z0={hole.z0} z1={hole.z1} width={1}/>
+    <Slab x={0} z={h-.6} w={T.w} d={1.2} y={L2}/>
+    <Flight x={(hole.x0+hole.x1)/2} y0={L2} y1={top} z0={hole.z1} z1={hole.z0} width={1}/>
+    <Rail from={[-h,h]} to={[h,h]} y={L2}/>
+    <Rail from={[h,-h]} to={[h,hole.z0]} y={L1}/>
+    {/* top deck around the stair opening */}
+    <Slab x={0} z={(-h+hole.z0)/2} w={T.w} d={hole.z0+h} y={top}/>
+    <Slab x={0} z={(h+hole.z1)/2} w={T.w} d={h-hole.z1} y={top}/>
+    <Slab x={(-h+hole.x0)/2} z={(hole.z0+hole.z1)/2} w={hole.x0+h} d={hole.z1-hole.z0} y={top}/>
+    <Slab x={(h+hole.x1)/2} z={(hole.z0+hole.z1)/2} w={h-hole.x1} d={hole.z1-hole.z0} y={top}/>
+    <Rail from={[hole.x0,hole.z0]} to={[hole.x0,hole.z1]} y={top}/>
+    <Rail from={[hole.x1,hole.z0]} to={[hole.x1,hole.z1]} y={top}/>
+    <Rail from={[hole.x0,hole.z1]} to={[hole.x1,hole.z1]} y={top}/>
+    {/* outer rail with openings for the two slides */}
+    <Rail from={[-h,-h]} to={[h,-h]} y={top}/>
+    <Rail from={[-h,-h]} to={[-h,h]} y={top}/>
+    <Rail from={[-h,h]} to={[-1.35,h]} y={top}/>
+    <Rail from={[.15,h]} to={[h,h]} y={top}/>
+    <Rail from={[h,-h]} to={[h,-.85]} y={top}/>
+    <Rail from={[h,.85]} to={[h,h]} y={top}/>
     {/* tent roof */}
-    <mesh position={[0,T.top+1.95,0]} rotation={[0,Math.PI/4,0]} castShadow>
+    <mesh position={[0,top+1.95,0]} rotation={[0,Math.PI/4,0]} castShadow>
       <coneGeometry args={[T.w*.82,1.35,4]}/><meshStandardMaterial color="#e3412f" roughness={.7}/>
     </mesh>
-    {/* outside flight to the mid landing, inside flight to the top */}
-    {Array.from({length:steps},(_,i)=>{
-      const f=(i+.5)/steps;
-      return <mesh key={'a'+i} position={[0,f*mid,-T.d/2-3.3+f*3.3]} castShadow>
-        <boxGeometry args={[1.2,.08,.3]}/><meshStandardMaterial color="#d3c8b4"/>
-      </mesh>;
-    })}
-    {[-1,1].map(s=><mesh key={'st'+s} position={[s*.62,mid/2,-T.d/2-1.65]} rotation={[Math.atan2(mid,3.3),0,0]}>
-      <boxGeometry args={[.07,.14,Math.hypot(mid,3.3)]}/><meshStandardMaterial color="#f8c630"/>
-    </mesh>)}
-    {Array.from({length:steps},(_,i)=>{
-      const f=(i+.5)/steps;
-      return <mesh key={'b'+i} position={[-T.w/2+.75,mid+f*mid,T.d/2-.5-f*(T.d-1)]}>
-        <boxGeometry args={[1,.08,.28]}/><meshStandardMaterial color="#d3c8b4"/>
-      </mesh>;
-    })}
   </group>;
 }
 // Half-pipe cross-section swept along a path; frames use world-up so it never twists.
@@ -246,9 +286,12 @@ function Slides(){
   const [spiral,wave]=SLIDES;
   const geos=useMemo(()=>{
     // Both slides end at the outlet; the last path stretch is the rider flying into the water.
-    const tubePts=spiral.points.slice(0,-1), wavePts=wave.points.filter(p=>p[2]<POOL.z-POOL.d/2+1);
+    // Built from the very track the rider follows, so the body stays centred in the tube.
+    const outlet=POOL.x-POOL.w/2+.4, cut=SLIDE_TRACKS[0].pts.findIndex((p,i)=>i>20&&p[1]<1.5&&p[0]>outlet);
+    const tubePts=SLIDE_TRACKS[0].pts.slice(0,cut).filter((_,i)=>i%3===0);
+    const wavePts=SLIDE_TRACKS[1].pts.filter((p,i)=>i%2===0&&p[2]<POOL.z-POOL.d/2+1);
     const curve=new THREE.CatmullRomCurve3(tubePts.map(p=>new THREE.Vector3(p[0],p[1]+.5,p[2])));
-    return {spiral:new THREE.TubeGeometry(curve,220,.58,16,false),wave:halfPipe(wavePts,.66),
+    return {spiral:new THREE.TubeGeometry(curve,260,.58,16,false),wave:halfPipe(wavePts,.66),
       waveFilm:halfPipe(wavePts,.6,10)};
   },[spiral,wave]);
   // Running water film inside the open slide.
@@ -332,11 +375,7 @@ function PoolSign(){
   </group>;
 }
 function EntryMarker(){
-  const ring=useRef();
-  useFrame(({clock})=>{if(ring.current)ring.current.material.opacity=.45+Math.sin(clock.elapsedTime*3)*.25;});
-  return <mesh ref={ring} position={[SLIDE_ENTRY.x,.05,SLIDE_ENTRY.z]} rotation={[-Math.PI/2,0,0]}>
-    <ringGeometry args={[1.05,1.3,40]}/><meshBasicMaterial color="#4de5ff" transparent opacity={.6} depthWrite={false}/>
-  </mesh>;
+  return <ActionMarker x={SLIDE_ENTRY.x} z={SLIDE_ENTRY.z} radius={1.3} color="#4de5ff" y={.05}/>;
 }
 export function PoolComplex({quality='high'}){
   const loungers=POOL_OBSTACLES.filter(o=>o.id.startsWith('lounger'));

@@ -121,3 +121,5 @@ export function closestBench(x,z,maxDistance=4){
   }
   return best;
 }
+// Edge length of the square world in metres (ground, map bounds).
+export const WORLD = 1200;

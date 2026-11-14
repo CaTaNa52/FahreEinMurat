@@ -69,7 +69,7 @@ function draw(ctx,r,time){
   ctx.beginPath();ctx.moveTo(c,c-13);ctx.lineTo(c+9,c+10);ctx.lineTo(c,c+5);ctx.lineTo(c-9,c+10);ctx.closePath();
   ctx.fillStyle='#ffffff';ctx.fill();ctx.lineWidth=2.5;ctx.strokeStyle='#0c1118';ctx.stroke();
 }
-export default function Minimap({radar}){
+export default function Minimap({radar,onOpen}){
   const canvas=useRef(null);
   useEffect(()=>{
     const ctx=canvas.current?.getContext('2d');
@@ -83,7 +83,8 @@ export default function Minimap({radar}){
     frame=requestAnimationFrame(loop);
     return ()=>cancelAnimationFrame(frame);
   },[radar]);
-  return <div className="minimap" data-testid="minimap" aria-label="Karte">
+  return <button type="button" className="minimap" data-testid="minimap" aria-label="Karte öffnen" onClick={onOpen}>
     <canvas ref={canvas} width={SIZE} height={SIZE}/>
-  </div>;
+    <span className="minimap-hint" aria-hidden="true">⤢</span>
+  </button>;
 }

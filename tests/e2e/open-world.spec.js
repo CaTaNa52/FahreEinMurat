@@ -33,3 +33,24 @@ test('walk into the police station, talk to the officer and leave again',async({
   await expect(page.locator('.speed small')).toContainText('FREERIDE');
   expect(errors).toEqual([]);
 });
+
+test('tap the minimap to open the big map, zoom, pan and close it',async({page})=>{
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await enter(page);
+  await page.getByRole('button',{name:'Karte öffnen'}).click();
+  const map=page.getByTestId('bigmap');
+  await expect(map).toBeVisible();
+  await page.getByRole('button',{name:'Hineinzoomen'}).click();
+  await page.getByRole('button',{name:'Ganze Karte zeigen'}).click();
+  const box=await map.boundingBox();
+  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
+  await page.mouse.down();
+  await page.mouse.move(box.x+box.width/2+80,box.y+box.height/2+40,{steps:4});
+  await page.mouse.up();
+  await page.mouse.wheel(0,-300);
+  await page.getByRole('button',{name:'Auf mich zentrieren'}).click();
+  await page.getByRole('button',{name:'Karte schließen'}).click();
+  await expect(map).toBeHidden();
+  await expect(page.getByTestId('minimap')).toBeVisible();
+  expect(errors).toEqual([]);
+});

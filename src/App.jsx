@@ -6,6 +6,7 @@ import { TUTORIAL_STEPS, hasSeenTutorial, markTutorialSeen } from './tutorial.js
 import Tutorial from './Tutorial.jsx';
 import InstallPrompt from './InstallPrompt.jsx';
 import Minimap from './Minimap.jsx';
+import BigMap from './BigMap.jsx';
 import { BUDDY_NAME } from './buddy.js';
 import { TOW_FEE, repairCost, damageLabel } from './crash.js';
 
@@ -206,6 +207,7 @@ export default function App(){
   const [activeSlide,setActiveSlide]=useState(null);
   const [tutorialStep,setTutorialStep]=useState(null);
   const [prompt,setPrompt]=useState(null);
+  const [mapOpen,setMapOpen]=useState(false);
   const [damage,setDamage]=useState(0);
   const [phone,setPhone]=useState(null);
   const [banner,setBanner]=useState(null);
@@ -314,6 +316,8 @@ export default function App(){
     setStudioMessage(outcome.paid?'🪙 '+outcome.paid+' AliAsaf-Coins ausgegeben.':'✓ Anpassung gespeichert.');
   };
   const interact=()=>{router.clearAll();controls.current.interact=true;};
+  // The big map pauses the world, so nothing happens to the scooter while exploring.
+  const openMap=()=>{router.clearAll();setMapOpen(true);};
   const repair=()=>{
     const cost=Math.min(profile.coins,repairCost(damage));
     setProfile(prev=>({...prev,coins:prev.coins-cost}));
@@ -345,6 +349,8 @@ export default function App(){
         e.preventDefault();return;
       }
       if(studio){if(e.code==='Escape')closeStudio();return;}
+      if(mapOpen){if(e.code==='Escape'||e.code==='KeyM')setMapOpen(false);return;}
+      if(e.code==='KeyM'&&!e.repeat){openMap();return;}
       const a=map[e.code];if(a){router.setKey(e.code,a,true);e.preventDefault();}if(e.code==='KeyR')controls.current.reset=true;if(e.code==='KeyV'&&!e.repeat)setView(v=>v==='third'?'first':'third');if(e.code==='KeyE'&&!e.repeat){
         if(prompt||seated||poolMode==='swim'||poolMode==='walk'||(!nearby&&(nearBench||slideNear)))controls.current.interact=true;
         else if(nearby)openStudio(nearby);
@@ -354,12 +360,12 @@ export default function App(){
     const hidden=()=>{if(document.hidden)router.clearAll();};
     addEventListener('keydown',down);addEventListener('keyup',up);addEventListener('blur',blur);document.addEventListener('visibilitychange',hidden);
     return()=>{removeEventListener('keydown',down);removeEventListener('keyup',up);removeEventListener('blur',blur);document.removeEventListener('visibilitychange',hidden);};
-  },[started,router,studio,nearby,nearBench,seated,tutorialStep,poolMode,slideNear,prompt]);
+  },[started,router,studio,nearby,nearBench,seated,tutorialStep,poolMode,slideNear,prompt,mapOpen]);
   return <>
     <InstallPrompt started={started}/>
-    {started&&<div className={'scene-host'+(banner?.kind==='crash'?' wrecked':'')}><SceneError><Suspense fallback={<div className="loading">3D-WELT WIRD GELADEN …</div>}><GameCanvas controls={controls} radar={radar} quality={quality} onSpeed={onSpeed} onGameEvent={onGameEvent} cosmetics={profile} view={view} paused={!!studio||tutorialStep!==null} tutorialStep={tutorialStep}/></Suspense></SceneError></div>}
+    {started&&<div className={'scene-host'+(banner?.kind==='crash'?' wrecked':'')}><SceneError><Suspense fallback={<div className="loading">3D-WELT WIRD GELADEN …</div>}><GameCanvas controls={controls} radar={radar} quality={quality} onSpeed={onSpeed} onGameEvent={onGameEvent} cosmetics={profile} view={view} paused={!!studio||tutorialStep!==null||mapOpen} tutorialStep={tutorialStep}/></Suspense></SceneError></div>}
     {started&&<div id="hud">
-      <div id="top"><Minimap radar={radar}/><div className="top-info"><div className="brand">ALIASAF<em>-SCOOTER.</em></div><div className="wallet" data-testid="coins">🪙 {profile.coins.toLocaleString('de-DE')} ALIASAF-COINS</div>
+      <div id="top"><Minimap radar={radar} onOpen={openMap}/><div className="top-info"><div className="brand">ALIASAF<em>-SCOOTER.</em></div><div className="wallet" data-testid="coins">🪙 {profile.coins.toLocaleString('de-DE')} ALIASAF-COINS</div>
         <div className={'damage'+(damage>=70?' bad':damage>=40?' warn':'')} data-testid="damage" role="status" aria-label={'Scooter-Zustand: '+damageLabel(damage)}>
           <span>🛴 {damageLabel(damage)}</span><div className="damage-bar"><div style={{width:(100-damage)+'%'}}/></div>
         </div>
@@ -439,8 +445,9 @@ export default function App(){
         {nearby==='garage'&&damage>0&&<button type="button" className="repair" onClick={repair} aria-label="Scooter reparieren">
           🔧 REPARIEREN · {Math.min(profile.coins,repairCost(damage)).toLocaleString('de-DE')} 🪙</button>}
       </div>}
-      <div className="hint">WASD · V KAMERA · E AKTION (GARAGE, WACHE, KOLLEGE, RUTSCHE) · R RESET</div>
+      <div className="hint">WASD · V KAMERA · M KARTE · E AKTION (GARAGE, WACHE, KOLLEGE, RUTSCHE) · R RESET</div>
     </div>}
+    {started&&mapOpen&&!studio&&<BigMap radar={radar} onClose={()=>setMapOpen(false)}/>}
     {started&&tutorialStep!==null&&!studio&&<Tutorial step={tutorialStep} onNext={nextTutorial} onSkip={finishTutorial}/>}
     {started&&studio&&<SceneError><Suspense fallback={<div className="loading">STUDIO WIRD GELADEN …</div>}>
       <Customizer room={studio} profile={profile} onChange={customize} onClose={closeStudio} message={studioMessage}/>
@@ -450,7 +457,7 @@ export default function App(){
       <p>Deine Stadt bei Sonnenuntergang. Weich dem Verkehr aus, nimm deinen Kollegen {BUDDY_NAME} mit, schau in der Polizeiwache vorbei und hol dir Coins in drei Challenges.</p>
       <button className="start" onClick={begin}>JETZT FAHREN →</button>
       <p style={{fontSize:12,opacity:.7}}>PC: WASD / Pfeiltasten · Handy: Gas gedrückt halten und nach oben zum Wheelie wischen.</p>
-      <p style={{fontSize:11,opacity:.5}}>REACT THREE FIBER · VERSION 1.0 · SUNSET CITY</p>
+      <p style={{fontSize:11,opacity:.5}}>REACT THREE FIBER · VERSION 1.1 · SUNSET CITY</p>
     </div></div>}
     {unsupported&&<div className="startup-error" role="alert"><h2>WebGL ist in dieser Vorschau nicht verfügbar.</h2><p>Öffne im Codespace den Port 5173 mit „Open in Browser“ direkt in Safari, Chrome oder Edge.</p><button onClick={()=>location.reload()}>Erneut versuchen</button></div>}
   </>;
